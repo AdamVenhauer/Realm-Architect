@@ -24,7 +24,7 @@ import { initializePlayerQuests } from '@/lib/quest-utils';
 import { checkAndCompleteQuests as checkAndCompleteQuestsAction, type CompletedQuestInfo } from '@/app/actions/quest-actions';
 import { advanceTurn as advanceTurnAction } from '@/app/actions/game-actions';
 import { deleteStructure as deleteStructureAction } from '@/app/actions/structure-actions';
-import { Menu, ShieldAlert, Trash2, HelpCircle } from 'lucide-react';
+import { Menu, ShieldAlert, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -110,6 +110,9 @@ export default function RealmArchitectPage() {
       try {
         const { updatedGameState: stateAfterQuests, completedQuestsInfo } = await checkAndCompleteQuestsAction(stateAfterInitialUpdate);
         
+        // Ensure setGameState is called with the latest state from quests
+        // This might involve another functional update if there's a possibility of race conditions,
+        // but for now, direct set should be fine if checkAndCompleteQuestsAction is relatively quick.
         setGameState(stateAfterQuests); 
         
         completedQuestsInfo.forEach(info => {
@@ -127,7 +130,7 @@ export default function RealmArchitectPage() {
         });
       }
     }
-  }, [toast]); 
+  }, [toast]); // Removed setGameState from dependencies as it's stable
 
 
   const handleAdvanceTurn = async () => {
@@ -176,9 +179,9 @@ export default function RealmArchitectPage() {
   
   const resetGame = () => {
     const initial = getInitialGameState();
-    setGameState(initial);
-    sessionStorage.removeItem('initialRealmToastShown');
-    setGameJustReset(true);
+    setGameState(initial); // Directly set the new state
+    sessionStorage.removeItem('initialRealmToastShown'); // Clear the flag
+    setGameJustReset(true); // Trigger the reset toast
   };
 
  useEffect(() => {
@@ -232,10 +235,9 @@ export default function RealmArchitectPage() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/how-to-play" title="How to play?">
-                <HelpCircle />
-                <span className="sr-only">How to play?</span>
+            <Button variant="ghost" asChild>
+              <Link href="/how-to-play">
+                How to play?
               </Link>
             </Button>
             <SidebarTrigger asChild>
