@@ -13,19 +13,17 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-// import { WorldGenerationForm } from '@/components/game/world-generation-form'; // Removed
 import { ResourceDisplay } from '@/components/game/resource-display';
 import { ConstructionMenu } from '@/components/game/construction-menu';
-// import { WorldMapDisplay } from '@/components/game/world-map-display'; // Removed
 import { GameActions } from '@/components/game/game-actions';
 import { QuestDisplay } from '@/components/game/quest-display';
 import type { GameState as GameStateType } from '@/types/game';
-import { getInitialGameState as getConfigInitialGameState, APP_TITLE, APP_ICON as AppIcon, QUEST_DEFINITIONS } from '@/config/game-config';
+import { getInitialGameState as getConfigInitialGameState, APP_TITLE, APP_ICON as AppIcon, QUEST_DEFINITIONS, BUILDING_TYPES, ACTION_ICONS } from '@/config/game-config';
 import { initializePlayerQuests } from '@/lib/quest-utils';
 import { checkAndCompleteQuests as checkAndCompleteQuestsAction, type CompletedQuestInfo } from '@/app/actions/quest-actions';
 import { advanceTurn as advanceTurnAction } from '@/app/actions/game-actions';
-// import { deleteStructure as deleteStructureAction } from '@/app/actions/structure-actions'; // Removed as UI is gone
-import { Menu, ShieldAlert } from 'lucide-react';
+import { deleteStructure as deleteStructureAction } from '@/app/actions/structure-actions';
+import { Menu, ShieldAlert, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -47,9 +45,6 @@ export default function RealmArchitectPage() {
     const configInitialState = getConfigInitialGameState(); 
     return {
       ...configInitialState, 
-      // worldDescription: "", // Removed
-      // generatedWorldMap: null, // Removed
-      // isGenerating: false, // Removed
       selectedBuildingForConstruction: null,
       playerQuests: initializePlayerQuests(), 
     };
@@ -58,6 +53,8 @@ export default function RealmArchitectPage() {
   const [gameState, setGameState] = useState<GameStateType>(getInitialGameState);
   const [isClient, setIsClient] = useState(false);
   const [gameJustReset, setGameJustReset] = useState(false);
+  const [structureToDeleteId, setStructureToDeleteId] = useState<string | null>(null);
+
 
   useEffect(() => {
     setIsClient(true);
@@ -152,26 +149,28 @@ export default function RealmArchitectPage() {
     }
   };
 
-  // const handleDeleteStructure = async (structureId: string) => { // Commented out as WorldMapDisplay which contained delete UI is removed
-  //   if (gameState.isGameOver) return;
-  //   try {
-  //     const nextState = await deleteStructureAction(gameState, structureId);
-  //     await updateGameStateAndCheckQuests(nextState); 
-  //     if (!nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
-  //       toast({
-  //           title: "Structure Demolished",
-  //           description: "Resources partially recovered.",
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error("Error deleting structure:", error);
-  //     toast({
-  //       title: "Error Demolishing Structure",
-  //       description: error instanceof Error ? error.message : "An unknown error occurred.",
-  //       variant: "destructive",
-  //     });
-  //   }
-  // };
+  const handleDeleteStructure = async () => {
+    if (gameState.isGameOver || !structureToDeleteId) return;
+    try {
+      const nextState = await deleteStructureAction(gameState, structureToDeleteId);
+      await updateGameStateAndCheckQuests(nextState); 
+      if (!nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
+        toast({
+            title: "Structure Demolished",
+            description: "Resources partially recovered.",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting structure:", error);
+      toast({
+        title: "Error Demolishing Structure",
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setStructureToDeleteId(null); // Close dialog
+    }
+  };
   
   const resetGame = () => {
     const initial = getInitialGameState();
@@ -248,8 +247,6 @@ export default function RealmArchitectPage() {
               <h2 className="text-lg font-semibold text-sidebar-foreground">Controls</h2>
             </SidebarHeader>
             <SidebarContent className="p-2 space-y-4">
-              {/* <WorldGenerationForm setGameState={setGameState} isGenerating={gameState.isGenerating} /> // Removed */}
-              {/* <Separator /> // Removed if WorldGenerationForm was the only thing before it */}
               <ConstructionMenu 
                 gameState={gameState} 
                 updateGameStateAndCheckQuests={updateGameStateAndCheckQuests}
@@ -267,8 +264,6 @@ export default function RealmArchitectPage() {
           <SidebarInset className="flex-1 p-4 md:p-6">
             <main className="space-y-6">
               <ResourceDisplay resources={gameState.resources} />
-              {/* WorldMapDisplay removed */}
-              {/* Display constructed structures here if needed, or in another component */}
                <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle>Realm Status</CardTitle>
@@ -279,12 +274,25 @@ export default function RealmArchitectPage() {
                   {gameState.structures.length > 0 ? (
                     <div className="mt-4">
                       <h4 className="font-semibold mb-2">Constructed Buildings:</h4>
-                      <ul className="list-disc list-inside pl-4 text-sm">
+                      <ul className="list-disc list-inside pl-4 text-sm space-y-2">
                         {gameState.structures.map(s => {
-                           // Correctly get building type name from BUILDING_TYPES
-                           const buildingInfo = Object.values(QUEST_DEFINITIONS).find(qd => qd.criteria.some(c => c.type === 'build' && c.buildingId === s.typeId));
-                           const buildingName = buildingInfo?.title || s.typeId; // Fallback to typeId if name not in quest def (should be in BUILDING_TYPES)
-                           return <li key={s.id}>{buildingName}</li>;
+                           const buildingDef = BUILDING_TYPES[s.typeId];
+                           const buildingName = buildingDef?.name || s.typeId;
+                           return (
+                            <li key={s.id} className="flex items-center justify-between">
+                              <span>{buildingName}</span>
+                              <Button 
+                                variant="destructive" 
+                                size="icon" 
+                                className="h-6 w-6"
+                                onClick={() => setStructureToDeleteId(s.id)}
+                                disabled={gameState.isGameOver}
+                                aria-label={`Delete ${buildingName}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </li>
+                           );
                         })}
                       </ul>
                     </div>
@@ -297,6 +305,26 @@ export default function RealmArchitectPage() {
           </SidebarInset>
         </div>
       </div>
+      {structureToDeleteId && BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)?.typeId || ''] && (
+        <AlertDialog open={!!structureToDeleteId} onOpenChange={(open) => !open && setStructureToDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to demolish the {BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)!.typeId].name}? 
+                You will recover some resources, but this action cannot be undone.
+                {BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)!.typeId].providesPopulation ? ` This will also reduce your population by ${BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)!.typeId].providesPopulation}.` : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setStructureToDeleteId(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteStructure} className="bg-destructive hover:bg-destructive/90">
+                Demolish
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </SidebarProvider>
   );
 }
