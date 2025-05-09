@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -231,7 +232,7 @@ export default function RealmArchitectPage() {
   return (
     <SidebarProvider defaultOpen>
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-background to-muted/50 dark:from-background dark:to-muted/30">
-        <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-sm">
+        <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
           <div className="container mx-auto flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
               <AppIcon className="h-8 w-8 text-primary" />
@@ -279,7 +280,7 @@ export default function RealmArchitectPage() {
           </Sidebar>
 
           <SidebarInset className="flex-1 p-4 md:p-6">
-            <main className="space-y-6">
+            <main className="container mx-auto space-y-6">
               <ResourceDisplay resources={gameState.resources} />
                <Card className="shadow-lg">
                 <CardHeader>
