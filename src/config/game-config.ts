@@ -105,10 +105,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     id: 'barracks',
     name: 'Barracks',
     icon: ShieldAlert,
-    description: 'Trains soldiers to defend your realm. Consumes resources for upkeep. (Full defense mechanics are a future feature).',
+    description: 'Trains soldiers to defend your realm. Consumes resources for upkeep. Helps mitigate effects of raids and attacks. (Full defense mechanics are a future feature).',
     cost: { wood: 80, stone: 100, gold: 30 },
     upkeep: { food: 3, gold: 3 },
-    production: {},
+    production: {}, // Effect handled in specific event logic
   },
   warehouse: {
     id: 'warehouse',
@@ -288,6 +288,52 @@ export const TURN_EVENTS: GameEvent[] = [
         const goldCost = 5;
         return { resourceDelta: { wood: woodBonus, stone: stoneBonus, gold: -goldCost}, additionalMessage: `Paid ${goldCost} gold for expert help, gaining ${woodBonus} wood and ${stoneBonus} stone.`};
     }
+  },
+  {
+    message: "Bandits are spotted near your borders! They demand tribute.",
+    effect: (currentState) => {
+      const numBarracks = currentState.structures.filter(s => s.typeId === 'barracks').length;
+      let goldLoss = Math.max(5, Math.floor(currentState.resources.gold * 0.15));
+      let foodLoss = Math.max(3, Math.floor(currentState.resources.food * 0.1));
+      let additionalMessage = "";
+
+      if (numBarracks > 0) {
+        goldLoss = Math.max(1, Math.floor(goldLoss * (1 - (numBarracks * 0.4)) )); // Barracks reduce loss by 40% each
+        foodLoss = Math.max(0, Math.floor(foodLoss * (1 - (numBarracks * 0.4)) ));
+        additionalMessage = ` Your barracks successfully defended against the bandits, significantly reducing losses! Lost ${goldLoss} gold and ${foodLoss} food.`;
+      } else {
+        additionalMessage = ` Bandits raided your unprotected realm! Lost ${goldLoss} gold and ${foodLoss} food.`;
+      }
+      goldLoss = Math.min(goldLoss, currentState.resources.gold); // Cant lose more gold than you have
+      foodLoss = Math.min(foodLoss, currentState.resources.food); // Cant lose more food than you have
+
+
+      return { resourceDelta: { gold: -goldLoss, food: -foodLoss }, additionalMessage };
+    }
+  },
+  {
+    message: "A pack of hungry wolves is menacing nearby farms!",
+    effect: (currentState) => {
+      const numBarracks = currentState.structures.filter(s => s.typeId === 'barracks').length;
+      let foodLoss = Math.max(2, Math.floor(currentState.resources.food * 0.05) + Math.floor(Math.random() * 5));
+      let populationLoss = 0;
+      let additionalMessage = "";
+
+      if (numBarracks > 0) {
+        foodLoss = Math.max(0, Math.floor(foodLoss * (1 - (numBarracks * 0.5)) )); // Barracks reduce food loss by 50% each
+        additionalMessage = ` Your soldiers from the barracks drove off the wolves! Food loss minimized to ${foodLoss}.`;
+      } else {
+        if (currentState.resources.population > 3 && Math.random() < 0.2) { // 20% chance of pop loss if no barracks
+          populationLoss = 1;
+        }
+        additionalMessage = ` Wolves attacked! Lost ${foodLoss} food. ${populationLoss > 0 ? `${populationLoss} citizen(s) were injured and perished.` : ''}`;
+      }
+      foodLoss = Math.min(foodLoss, currentState.resources.food);
+      populationLoss = Math.min(populationLoss, currentState.resources.population);
+
+
+      return { resourceDelta: { food: -foodLoss, population: -populationLoss }, additionalMessage };
+    }
   }
 ];
 
@@ -452,7 +498,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'metropolisBuilder',
     title: 'Metropolis Builder',
     description: 'Reach a population of 50 citizens, forming a true metropolis.',
-    icon: Building2, // Kept Building2 as it fits well
+    icon: Building2, 
     isAchievement: true,
     criteria: [
       { type: 'population_reach', targetAmount: 50, description: "Reach 50 citizens." }
@@ -477,9 +523,9 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     icon: ShieldCheck, 
     isAchievement: true, 
     criteria: [
-        { type: 'resource_reach', resourceType: 'gold', targetAmount: 150, description: "Have 150 Gold." }, // Increased gold target
+        { type: 'resource_reach', resourceType: 'gold', targetAmount: 150, description: "Have 150 Gold." }, 
         { type: 'population_reach', targetAmount: 15, description: "Have at least 15 Population." },
-        { type: 'turn_reach', targetTurn: 15, description: "Reach Turn 15 while meeting other conditions." } // Assumes this checks consecutive positive gold, logic for that is complex and outside this definition
+        { type: 'turn_reach', targetTurn: 15, description: "Reach Turn 15 while meeting other conditions." } 
     ],
     reward: { resources: { gold: 75 }, message: "Your realm enjoys prolonged economic stability!" }
   },
@@ -489,7 +535,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     description: 'Produce more food, wood, and stone than your realm consumes in upkeep for 3 turns.',
     icon: Briefcase, 
     isAchievement: true,
-    criteria: [ // Simplified criteria to building count, actual production vs upkeep check is complex game logic
+    criteria: [ 
         { type: 'build', buildingId: 'farm', targetCount: 3, description: "Build 3 Farms." },
         { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills (or 4 Logging Camps)." },
         { type: 'build', buildingId: 'stoneQuarry', targetCount: 2, description: "Build 2 Stone Quarries." },
