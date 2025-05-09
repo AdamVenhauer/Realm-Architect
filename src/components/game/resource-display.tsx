@@ -7,10 +7,11 @@ import { cn } from '@/lib/utils';
 
 interface ResourceDisplayProps {
   resources: ResourceSet;
+  maxPopulationCapacity: number;
   className?: string;
 }
 
-export function ResourceDisplay({ resources, className }: ResourceDisplayProps) {
+export function ResourceDisplay({ resources, maxPopulationCapacity, className }: ResourceDisplayProps) {
   return (
     <Card className={cn("shadow-md mb-4", className)}>
       <CardHeader>
@@ -25,6 +26,19 @@ export function ResourceDisplay({ resources, className }: ResourceDisplayProps) 
             const details = RESOURCE_DETAILS[key as keyof ResourceSet];
             if (!details) return null;
             const Icon = details.icon;
+
+            if (key === 'population') {
+              return (
+                <div key={key} className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md shadow">
+                  <Icon className={cn("h-6 w-6", details.color)} />
+                  <div>
+                    <span className="font-semibold">{details.name}: </span>
+                    <span>{value} / {maxPopulationCapacity}</span>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={key} className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md shadow">
                 <Icon className={cn("h-6 w-6", details.color)} />

@@ -17,7 +17,7 @@ import { ResourceDisplay } from '@/components/game/resource-display';
 import { ConstructionMenu } from '@/components/game/construction-menu';
 import { GameActions } from '@/components/game/game-actions';
 import { QuestDisplay } from '@/components/game/quest-display';
-import type { GameState as GameStateType } from '@/types/game';
+import type { GameState as GameStateType, PlacedStructure } from '@/types/game';
 import { getInitialGameState as getConfigInitialGameState, APP_TITLE, APP_ICON as AppIcon, QUEST_DEFINITIONS, BUILDING_TYPES, ACTION_ICONS } from '@/config/game-config';
 import { initializePlayerQuests } from '@/lib/quest-utils';
 import { checkAndCompleteQuests as checkAndCompleteQuestsAction, type CompletedQuestInfo } from '@/app/actions/quest-actions';
@@ -61,27 +61,24 @@ export default function RealmArchitectPage() {
     setIsClient(true);
   }, []);
 
-  // Effect for Reset Game Toast
   useEffect(() => {
     if (isClient && gameJustReset) {
       toast({
         title: "New Realm Started",
         description: "A fresh beginning awaits!",
       });
-      setGameJustReset(false); // Reset the trigger
+      setGameJustReset(false); 
     }
   }, [isClient, gameJustReset, toast]);
 
-  // Effect for Game Over Toast
   const prevIsGameOverRef = useRef<boolean>(gameState.isGameOver);
   useEffect(() => {
     if (isClient && gameState.isGameOver && !prevIsGameOverRef.current) {
-      // Game just transitioned to over
       toast({
         title: "Realm Lost!",
         description: gameState.currentEvent || "Your realm has crumbled.",
         variant: "destructive",
-        duration: 10000, // Longer duration for game over
+        duration: 10000, 
       });
     }
     prevIsGameOverRef.current = gameState.isGameOver;
@@ -167,9 +164,10 @@ export default function RealmArchitectPage() {
       const nextState = await deleteStructureAction(gameState, structureToDeleteId);
       await updateGameStateAndCheckQuests(nextState); 
       if (isClient && !nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
+        const structureName = BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)?.typeId || '']?.name || "A structure";
         toast({
-            title: "Structure Demolished",
-            description: "Resources partially recovered.",
+            title: `${structureName} Demolished`,
+            description: nextState.currentEvent.split(" | ").pop() || "Resources partially recovered.",
         });
       }
     } catch (error) {
@@ -182,7 +180,7 @@ export default function RealmArchitectPage() {
         });
       }
     } finally {
-      setStructureToDeleteId(null); // Close dialog
+      setStructureToDeleteId(null); 
     }
   };
   
@@ -207,6 +205,22 @@ export default function RealmArchitectPage() {
         }
     }
   }, [isClient, gameState.currentTurn, gameState.playerQuests, gameState.isGameOver, toast]);
+
+  const calculateMaxPopulationCapacity = useCallback((structures: PlacedStructure[]): number => {
+    let cap = 0;
+    structures.forEach(structure => {
+        const buildingDef = BUILDING_TYPES[structure.typeId];
+        if (buildingDef && buildingDef.populationCapacity) {
+            cap += buildingDef.populationCapacity;
+        }
+    });
+    // If no Huts built yet, the initial population implies some base capacity or they are "homeless".
+    // The game logic handles this: if pop > capacity, issues arise.
+    // For display, it's fine if capacity is 0 and pop is >0.
+    return cap;
+  }, []);
+
+  const maxPopulationCapacity = calculateMaxPopulationCapacity(gameState.structures);
 
 
   if (!isClient) {
@@ -240,7 +254,7 @@ export default function RealmArchitectPage() {
     <SidebarProvider defaultOpen>
       <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-background to-muted/50 dark:from-background dark:to-muted/30">
         <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
-          <div className="flex items-center justify-between p-4">
+          <div className="container flex h-14 items-center justify-between p-4 mx-auto">
             <div className="flex items-center gap-2">
               <AppIcon className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
@@ -262,7 +276,7 @@ export default function RealmArchitectPage() {
           </div>
         </header>
         
-        <div className="flex flex-1 w-full">
+        <div className="container flex flex-1 w-full mx-auto">
           <Sidebar
             variant="sidebar"
             collapsible="icon"
@@ -288,7 +302,7 @@ export default function RealmArchitectPage() {
 
           <SidebarInset className="flex-1 p-4 md:p-6">
             <main className="w-full flex-1 overflow-y-auto space-y-6">
-              <ResourceDisplay resources={gameState.resources} className="w-full" />
+              <ResourceDisplay resources={gameState.resources} maxPopulationCapacity={maxPopulationCapacity} className="w-full" />
                <Card className="shadow-lg w-full">
                 <CardHeader>
                   <CardTitle>Realm Status</CardTitle>
@@ -330,26 +344,35 @@ export default function RealmArchitectPage() {
           </SidebarInset>
         </div>
       </div>
-      {structureToDeleteId && BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)?.typeId || ''] && (
-        <AlertDialog open={!!structureToDeleteId} onOpenChange={(open) => !open && setStructureToDeleteId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to demolish the {BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)!.typeId].name}? 
-                You will recover some resources, but this action cannot be undone.
-                {BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)!.typeId].providesPopulation ? ` This will also reduce your population by ${BUILDING_TYPES[gameState.structures.find(s => s.id === structureToDeleteId)!.typeId].providesPopulation}.` : ''}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setStructureToDeleteId(null)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteStructure} className="bg-destructive hover:bg-destructive/90">
-                Demolish
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      {structureToDeleteId && 
+        (() => {
+          const structure = gameState.structures.find(s => s.id === structureToDeleteId);
+          const buildingType = structure ? BUILDING_TYPES[structure.typeId] : null;
+          if (!buildingType) return null; // Should not happen if ID is valid
+
+          return (
+            <AlertDialog open={!!structureToDeleteId} onOpenChange={(open) => !open && setStructureToDeleteId(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to demolish the {buildingType.name}? 
+                    You will recover some resources, but this action cannot be undone.
+                    {buildingType.populationCapacity ? ` This will reduce your realm's housing capacity by ${buildingType.populationCapacity}. If population exceeds the new capacity, citizens will leave.` : ''}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setStructureToDeleteId(null)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteStructure} className="bg-destructive hover:bg-destructive/90">
+                    Demolish
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          );
+        })()
+      }
     </SidebarProvider>
   );
 }
+

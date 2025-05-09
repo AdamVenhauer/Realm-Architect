@@ -16,7 +16,7 @@ export interface BuildingType {
   cost: Partial<Omit<ResourceSet, 'population'>>; // Cost should not include population
   upkeep: Partial<Omit<ResourceSet, 'population'>>;
   production: Partial<Omit<ResourceSet, 'population'>>; // What it produces per turn
-  providesPopulation?: number; // How much population this building adds/supports
+  populationCapacity?: number; // How much population capacity this building adds
 }
 
 export interface PlacedStructure {
@@ -99,4 +99,3 @@ export interface GameState {
   isGameOver: boolean;
   // population is now part of resources: resources.population
 }
-

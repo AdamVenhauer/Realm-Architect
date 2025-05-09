@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -24,7 +23,7 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
 
   const handleSelectBuilding = (buildingId: string) => {
     if (selectedBuildingId === buildingId) {
-      setSelectedBuildingId(null); // Deselect if the same building is clicked
+      setSelectedBuildingId(null); 
       toast({
         title: `${BUILDING_TYPES[buildingId].name} Deselected`,
         description: "No building selected for construction.",
@@ -64,16 +63,14 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
           typeId: buildingType.id,
         };
         
-        let newPopulation = prevGameState.resources.population;
-        if (buildingType.providesPopulation) {
-          newPopulation += buildingType.providesPopulation;
-        }
+        // Population is not directly increased here; only capacity changes.
+        // Current population will increase via immigration in advanceTurn if capacity allows.
         
         return {
           ...prevGameState,
-          resources: { ...newResources, population: newPopulation },
+          resources: { ...newResources }, // Only resource costs are deducted
           structures: [...prevGameState.structures, newStructure],
-          selectedBuildingForConstruction: null, // Clear selection after placing
+          selectedBuildingForConstruction: null, 
         };
       };
       
@@ -82,7 +79,7 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
         
       toast({
         title: `${buildingType.name} Placed!`,
-        description: `Resources deducted. Your realm grows. ${buildingType.providesPopulation ? `Population increased by ${buildingType.providesPopulation}.` : ''}`,
+        description: `Resources deducted. ${buildingType.populationCapacity ? `Housing capacity increased by ${buildingType.populationCapacity}.` : 'Your realm grows.'}`,
       });
 
     } else {
@@ -120,14 +117,14 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
                         size="sm"
                         variant={isSelected ? "default" : "outline"}
                         onClick={() => handleSelectBuilding(building.id)}
-                        disabled={!!selectedBuildingId && !isSelected} // Disable other buttons if one is selected
+                        disabled={!!selectedBuildingId && !isSelected} 
                       >
                         {isSelected ? "Deselect" : "Select"}
                       </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">{building.description}</p>
-                   {building.providesPopulation && (
-                    <p className="text-xs text-muted-foreground mb-2">Provides +{building.providesPopulation} Population</p>
+                   {building.populationCapacity && (
+                    <p className="text-xs text-muted-foreground mb-2">Provides +{building.populationCapacity} Population Capacity</p>
                   )}
                   <div className="text-xs space-y-1">
                     <div>

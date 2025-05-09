@@ -1,5 +1,5 @@
 
-import type { BuildingType, QuestDefinition, ResourceSet } from '@/types/game';
+import type { BuildingType, QuestDefinition, ResourceSet, GameState, PlacedStructure } from '@/types/game';
 import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Hammer, Play, Globe, Axe, Trophy, ListChecks, Target, Users, ShieldAlert, Skull, Warehouse, Castle, Banknote, Zap, Sprout, CandlestickChart, Brain, Gem, Clock, Library, Factory, Building2, Hourglass, Award, ShieldCheck, Briefcase } from 'lucide-react';
 
 export const APP_TITLE = "Realm Architect";
@@ -10,19 +10,18 @@ export const INITIAL_RESOURCES: ResourceSet = {
   stone: 100,
   food: 50,
   gold: 20,
-  population: 5,
+  population: 5, // Initial population starts "homeless" if no huts, or implies base capacity.
 };
 
-// Moved here because GameState type is needed
-import type { GameState } from '@/types/game'; 
 
 export function getInitialGameState(): Omit<GameState, 'playerQuests' | 'selectedBuildingForConstruction' > { 
   return {
     resources: { ...INITIAL_RESOURCES },
-    structures: [],
+    structures: [], // No initial structures by default
     currentTurn: 1,
     currentEvent: null,
     isGameOver: false,
+    // maxPopulationCapacity is calculated dynamically, not stored in GameState
   };
 }
 
@@ -32,11 +31,11 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     id: 'hut',
     name: 'Hut',
     icon: Home,
-    description: 'Basic housing. Increases population capacity.',
+    description: 'Basic housing. Provides 5 population capacity. Essential for population growth.',
     cost: { wood: 50, stone: 20 },
     upkeep: { food: 1 }, 
     production: {},
-    providesPopulation: 5,
+    populationCapacity: 5, // Changed from providesPopulation
   },
   farm: {
     id: 'farm',
@@ -139,14 +138,22 @@ export const ACTION_ICONS = {
 
 export interface GameEvent {
   message: string;
-  // Effect function receives a *copy* of the current game state (or relevant parts)
-  // and returns deltas or specific new values.
-  // It should not mutate the state passed to it directly.
-  effect?: (currentState: Readonly<GameState>) => { 
-    resourceDelta?: Partial<ResourceSet>; // Can include positive or negative population changes
+  effect?: (currentState: Readonly<Pick<GameState, 'resources' | 'structures' | 'currentTurn'>>) => { 
+    resourceDelta?: Partial<ResourceSet>; 
     additionalMessage?: string; 
   };
 }
+
+const calculateMaxPopulationCapacity = (structures: Readonly<PlacedStructure[]>): number => {
+  let capacity = 0;
+  structures.forEach(structure => {
+    const buildingDef = BUILDING_TYPES[structure.typeId];
+    if (buildingDef && buildingDef.populationCapacity) {
+      capacity += buildingDef.populationCapacity;
+    }
+  });
+  return capacity;
+};
 
 export const TURN_EVENTS: GameEvent[] = [
   { message: "A gentle breeze rustles the leaves, a peaceful day in your realm." },
@@ -176,10 +183,19 @@ export const TURN_EVENTS: GameEvent[] = [
     }
   },
   {
-    message: "A new family, impressed by your rule, has decided to settle in your realm.",
-    effect: () => {
-      const populationIncrease = 1; // A small, consistent increase
-      return { resourceDelta: { population: populationIncrease }, additionalMessage: `Population increased by ${populationIncrease} as a new family arrives.` };
+    message: "A new family, drawn by tales of your realm, seeks to settle.",
+    effect: (currentState) => {
+      const maxCapacity = calculateMaxPopulationCapacity(currentState.structures);
+      if (currentState.resources.population < maxCapacity) {
+        const immigrants = 1;
+        const foodNeededForNextTurn = Math.ceil((currentState.resources.population + immigrants) * 0.5); // Using 0.5 consumption rate
+        if (currentState.resources.food >= foodNeededForNextTurn) {
+          return { resourceDelta: { population: immigrants }, additionalMessage: `${immigrants} new citizen(s) have arrived and found shelter!` };
+        } else {
+          return { additionalMessage: "A new family arrived, but there isn't enough food to support them, so they moved on." };
+        }
+      }
+      return { additionalMessage: "A new family arrived, but there was no housing available, so they moved on." };
     }
   },
   { message: "Whispers of unrest circulate due to low gold reserves. Workers are grumbling about delayed payments." },
@@ -187,8 +203,8 @@ export const TURN_EVENTS: GameEvent[] = [
     message: "A mild sickness has spread through a part of the settlement. Some citizens are unable to work.",
     effect: (currentState) => {
       if (currentState.resources.population > 5) {
-        const popLoss = 1; // Minor population loss
-        const foodCost = Math.floor(Math.random() * 10) + 5; // Cost for medicine/care
+        const popLoss = 1; 
+        const foodCost = Math.floor(Math.random() * 10) + 5; 
         return { 
           resourceDelta: { population: -popLoss, food: -foodCost }, 
           additionalMessage: `Sickness causes the loss of ${popLoss} citizen(s) and costs ${foodCost} food for care.` 
@@ -216,7 +232,7 @@ export const TURN_EVENTS: GameEvent[] = [
       let woodLoss = 0;
       if (currentState.resources.wood > 20) {
         woodLoss = Math.floor(Math.random() * 10) + 5;
-        const mitigationPerWarehouse = 3; // Each warehouse mitigates 3 wood loss
+        const mitigationPerWarehouse = 3; 
         const actualMitigation = numWarehouses * mitigationPerWarehouse;
         woodLoss = Math.max(0, woodLoss - actualMitigation);
         
@@ -234,7 +250,7 @@ export const TURN_EVENTS: GameEvent[] = [
     message: "A trade caravan arrives, offering goods for gold.",
     effect: (currentState) => {
         const goldGain = Math.floor(Math.random() * 15) + 10;
-        const woodCost = Math.floor(currentState.resources.wood * 0.05); // Trade some wood
+        const woodCost = Math.floor(currentState.resources.wood * 0.05); 
         if (currentState.resources.wood > woodCost + 10) {
              return { resourceDelta: { gold: goldGain, wood: -woodCost }, additionalMessage: `Traded ${woodCost} wood for ${goldGain} gold with a passing caravan.` };
         }
@@ -248,13 +264,12 @@ export const TURN_EVENTS: GameEvent[] = [
         let foodLoss = 0;
         if (currentState.resources.food > 20) {
             foodLoss = Math.max(5, Math.floor(currentState.resources.food * 0.1));
-            const mitigationPerWarehouse = 3; // Each warehouse mitigates 3 food loss
+            const mitigationPerWarehouse = 3; 
             const actualMitigation = numWarehouses * mitigationPerWarehouse;
             foodLoss = Math.max(0, foodLoss - actualMitigation);
             
             let mitigationMessage = "";
             if (numWarehouses > 0 && actualMitigation > 0) {
-                 // Make sure reported mitigation isn't more than original potential loss before mitigation
                 mitigationMessage = ` (Mitigated by ${Math.min(actualMitigation, Math.max(5, Math.floor(currentState.resources.food * 0.1)))} thanks to Warehouses)`;
             }
             return { resourceDelta: { food: -foodLoss}, additionalMessage: `Pests destroyed ${foodLoss} food!${mitigationMessage}`};
@@ -279,7 +294,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
   firstShelter: {
     id: 'firstShelter',
     title: 'First Shelter',
-    description: 'Provide basic housing for your people.',
+    description: 'Provide basic housing for your people by building a Hut.',
     icon: Home,
     criteria: [
       { type: 'build', buildingId: 'hut', targetCount: 1, description: "Construct 1 Hut." }
@@ -527,7 +542,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'resourceHoarder',
     title: 'Resource Hoarder',
     description: 'Accumulate 500 of Wood, Stone, and Food.',
-    icon: Warehouse, // Changed icon to Warehouse as it's fitting
+    icon: Warehouse, 
     isAchievement: true,
     criteria: [
       { type: 'resource_reach', resourceType: 'wood', targetAmount: 500, description: "Accumulate 500 Wood." },

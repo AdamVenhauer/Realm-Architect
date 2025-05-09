@@ -1,10 +1,20 @@
-
 'use server';
 
-import type { GameState, ResourceSet } from '@/types/game';
+import type { GameState, ResourceSet, PlacedStructure } from '@/types/game';
 import { BUILDING_TYPES } from '@/config/game-config';
 
 const REFUND_PERCENTAGE = 0.5; // 50% refund
+
+const calculateMaxPopulationCapacityAfterRemoval = (structures: Readonly<PlacedStructure[]>): number => {
+  let capacity = 0;
+  structures.forEach(structure => {
+    const buildingDef = BUILDING_TYPES[structure.typeId];
+    if (buildingDef && buildingDef.populationCapacity) {
+      capacity += buildingDef.populationCapacity;
+    }
+  });
+  return capacity;
+};
 
 export async function deleteStructure(
   currentGameState: GameState,
@@ -19,7 +29,6 @@ export async function deleteStructure(
 
   if (structureIndex === -1) {
     console.warn(`Structure with ID ${structureId} not found for deletion.`);
-    // Optionally add a game event if this happens due to some bug
     newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + `Error: Structure ID ${structureId} not found for deletion.`;
     return newState; 
   }
@@ -27,10 +36,25 @@ export async function deleteStructure(
   const structureToRemove = newState.structures[structureIndex];
   const buildingType = BUILDING_TYPES[structureToRemove.typeId];
 
+  // Create a temporary list of structures *without* the one being demolished to calculate new capacity
+  const structuresAfterRemoval = newState.structures.filter(s => s.id !== structureId);
+
+
   if (!buildingType) {
     console.warn(`Building type ${structureToRemove.typeId} not found for deleted structure ID ${structureId}.`);
-    newState.structures.splice(structureIndex, 1); // Remove structure even if type is unknown
+    newState.structures.splice(structureIndex, 1); 
     newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + `An unknown structure was demolished. No resources recovered.`;
+    // Recalculate capacity even for unknown structure if it somehow affected it (though unlikely)
+    const newMaxCapacityAfterUnknownRemoval = calculateMaxPopulationCapacityAfterRemoval(structuresAfterRemoval);
+    if (newState.resources.population > newMaxCapacityAfterUnknownRemoval) {
+        const SPREADSHEET_ONLINE_EDITOR_MAX_ROWS = newState.resources.population - newMaxCapacityAfterUnknownRemoval;
+        newState.resources.population = newMaxCapacityAfterUnknownRemoval;
+        newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + `${SPREADSHEET_ONLINE_EDITOR_MAX_ROWS} citizen(s) became homeless and left after an unknown structure was demolished.`;
+         if (newState.resources.population <= 0 && !newState.isGameOver) {
+            newState.isGameOver = true;
+            newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + `Demolishing an unknown structure led to a critical loss of housing, and your realm has fallen.`;
+        }
+    }
     return newState;
   }
 
@@ -45,27 +69,32 @@ export async function deleteStructure(
     }
   }
   const refundMessage = refundedResourcesMessageParts.length > 0 ? ` Recovered ${refundedResourcesMessageParts.join(', ')}.` : ' No resources recovered.';
+  
+  newState.resources = newResources; // Apply refunded resources before population check
 
+  // Remove structure from state to correctly calculate new max capacity
+  newState.structures.splice(structureIndex, 1); 
+  
+  // Adjust population if the building provided capacity and demolition causes overpopulation
+  if (buildingType.populationCapacity) {
+    const newMaxCapacity = calculateMaxPopulationCapacityAfterRemoval(newState.structures); // Use updated structures list
+    if (newState.resources.population > newMaxCapacity) {
+      const SPREADSHEET_ONLINE_EDITOR_MAX_ROWS = newState.resources.population - newMaxCapacity;
+      newState.resources.population = newMaxCapacity; // Reduce current population to new max capacity
+      
+      const homelessMessage = `${SPREADSHEET_ONLINE_EDITOR_MAX_ROWS} citizen(s) became homeless and left after demolishing ${buildingType.name}.`;
+      newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + homelessMessage;
 
-  // Adjust population if the building provided it
-  if (buildingType.providesPopulation) {
-    newResources.population = Math.max(0, newResources.population - buildingType.providesPopulation);
-    // Check for game over if population hits 0 after deleting housing
-    if (newResources.population <= 0 && !newState.isGameOver) { // Check !newState.isGameOver to avoid overriding existing game over event
+      if (newState.resources.population <= 0 && !newState.isGameOver) {
         newState.isGameOver = true;
         newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + `Demolishing vital housing (${buildingType.name}) led to the demise of your last citizens. The realm is lost.`;
+      }
     }
   }
   
-  newState.resources = newResources;
-
-  // Remove structure
-  newState.structures.splice(structureIndex, 1);
-  
-  if (!newState.isGameOver) { // Only add standard demolition message if not game over
+  if (!newState.isGameOver) { 
      newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + `${buildingType.name} demolished.${refundMessage}`;
   }
-
 
   return newState;
 }
