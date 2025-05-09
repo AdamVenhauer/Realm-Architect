@@ -44,5 +44,3 @@ export function GameActions({ gameState, onAdvanceTurn }: GameActionsProps) {
     </Card>
   );
 }
-
-```

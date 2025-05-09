@@ -2,6 +2,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
+import { useState } from 'react'; // Added import for useState
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { GameState, ResourceSet } from '@/types/game';
@@ -13,12 +14,11 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ConstructionMenuProps {
   gameState: GameState;
-  updateGameStateAndCheckQuests: (newStateOrUpdater: GameState | ((prevState: GameState) => GameState)) => Promise<void>; 
+  updateGameStateAndCheckQuests: (newStateOrUpdater: GameState | ((prevState: GameState) => GameState)) => Promise<void>;
 }
 
 export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: ConstructionMenuProps) {
   const { toast } = useToast();
-  // Local state for selection, does not need to trigger quests or complex logic
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
 
 
@@ -26,7 +26,7 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
     setSelectedBuildingId(buildingId);
     toast({
       title: `${BUILDING_TYPES[buildingId].name} Selected`,
-      description: "Click 'Place Building' to confirm construction (simulated on map).",
+      description: "Click 'Place Building' to confirm construction.",
     });
   };
 
@@ -65,12 +65,11 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
           ...prevGameState,
           resources: { ...newResources, population: newPopulation },
           structures: [...prevGameState.structures, newStructure],
-          // selectedBuildingForConstruction: null, // UI state, handled by local state
         };
       };
       
       await updateGameStateAndCheckQuests(updaterFunction); 
-      setSelectedBuildingId(null); // Reset local UI selection
+      setSelectedBuildingId(null); 
         
       toast({
         title: `${buildingType.name} Placed!`,
@@ -160,5 +159,3 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
     </Card>
   );
 }
-
-```
