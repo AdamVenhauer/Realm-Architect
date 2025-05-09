@@ -233,9 +233,9 @@ export default function RealmArchitectPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/how-to-play" title="How to Play">
+              <Link href="/how-to-play" title="How to play?">
                 <HelpCircle />
-                <span className="sr-only">How to Play</span>
+                <span className="sr-only">How to play?</span>
               </Link>
             </Button>
             <SidebarTrigger asChild>
@@ -338,3 +338,4 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
+
