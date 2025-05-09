@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -18,7 +19,15 @@ import { ConstructionMenu } from '@/components/game/construction-menu';
 import { GameActions } from '@/components/game/game-actions';
 import { QuestDisplay } from '@/components/game/quest-display';
 import type { GameState as GameStateType, PlacedStructure } from '@/types/game';
-import { getInitialGameState as getConfigInitialGameState, APP_TITLE, APP_ICON as AppIcon, QUEST_DEFINITIONS, BUILDING_TYPES, ACTION_ICONS } from '@/config/game-config';
+import { 
+  getInitialGameState as getConfigInitialGameState, 
+  APP_TITLE, 
+  APP_ICON as AppIcon, 
+  QUEST_DEFINITIONS, 
+  BUILDING_TYPES, 
+  ACTION_ICONS,
+  BASE_POPULATION_CAPACITY // Import BASE_POPULATION_CAPACITY
+} from '@/config/game-config';
 import { initializePlayerQuests } from '@/lib/quest-utils';
 import { checkAndCompleteQuests as checkAndCompleteQuestsAction, type CompletedQuestInfo } from '@/app/actions/quest-actions';
 import { advanceTurn as advanceTurnAction } from '@/app/actions/game-actions';
@@ -207,16 +216,13 @@ export default function RealmArchitectPage() {
   }, [isClient, gameState.currentTurn, gameState.playerQuests, gameState.isGameOver, toast]);
 
   const calculateMaxPopulationCapacity = useCallback((structures: PlacedStructure[]): number => {
-    let cap = 0;
+    let cap = BASE_POPULATION_CAPACITY; // Use imported BASE_POPULATION_CAPACITY
     structures.forEach(structure => {
         const buildingDef = BUILDING_TYPES[structure.typeId];
         if (buildingDef && buildingDef.populationCapacity) {
             cap += buildingDef.populationCapacity;
         }
     });
-    // If no Huts built yet, the initial population implies some base capacity or they are "homeless".
-    // The game logic handles this: if pop > capacity, issues arise.
-    // For display, it's fine if capacity is 0 and pop is >0.
     return cap;
   }, []);
 
@@ -348,7 +354,7 @@ export default function RealmArchitectPage() {
         (() => {
           const structure = gameState.structures.find(s => s.id === structureToDeleteId);
           const buildingType = structure ? BUILDING_TYPES[structure.typeId] : null;
-          if (!buildingType) return null; // Should not happen if ID is valid
+          if (!buildingType) return null; 
 
           return (
             <AlertDialog open={!!structureToDeleteId} onOpenChange={(open) => !open && setStructureToDeleteId(null)}>
@@ -358,7 +364,7 @@ export default function RealmArchitectPage() {
                   <AlertDialogDescription>
                     Are you sure you want to demolish the {buildingType.name}? 
                     You will recover some resources, but this action cannot be undone.
-                    {buildingType.populationCapacity ? ` This will reduce your realm's housing capacity by ${buildingType.populationCapacity}. If population exceeds the new capacity, citizens will leave.` : ''}
+                    {buildingType.populationCapacity ? ` This will reduce your realm's housing capacity by ${buildingType.populationCapacity}. If population exceeds the new capacity (below the base capacity of ${BASE_POPULATION_CAPACITY} or total capacity from other Huts), citizens may leave.` : ''}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -375,4 +381,3 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
-

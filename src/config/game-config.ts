@@ -10,18 +10,19 @@ export const INITIAL_RESOURCES: ResourceSet = {
   stone: 100,
   food: 50,
   gold: 20,
-  population: 5, // Initial population starts "homeless" if no huts, or implies base capacity.
+  population: 5,
 };
+
+export const BASE_POPULATION_CAPACITY = 5;
 
 
 export function getInitialGameState(): Omit<GameState, 'playerQuests' | 'selectedBuildingForConstruction' > { 
   return {
     resources: { ...INITIAL_RESOURCES },
-    structures: [], // No initial structures by default
+    structures: [], 
     currentTurn: 1,
     currentEvent: null,
     isGameOver: false,
-    // maxPopulationCapacity is calculated dynamically, not stored in GameState
   };
 }
 
@@ -35,7 +36,7 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     cost: { wood: 50, stone: 20 },
     upkeep: { food: 1 }, 
     production: {},
-    populationCapacity: 5, // Changed from providesPopulation
+    populationCapacity: 5,
   },
   farm: {
     id: 'farm',
@@ -144,8 +145,9 @@ export interface GameEvent {
   };
 }
 
-const calculateMaxPopulationCapacity = (structures: Readonly<PlacedStructure[]>): number => {
-  let capacity = 0;
+// Helper function now internal to this config, if needed by TURN_EVENTS for consistency
+const calculateMaxPopCapacityForEvents = (structures: Readonly<PlacedStructure[]>): number => {
+  let capacity = BASE_POPULATION_CAPACITY; // Use base capacity
   structures.forEach(structure => {
     const buildingDef = BUILDING_TYPES[structure.typeId];
     if (buildingDef && buildingDef.populationCapacity) {
@@ -185,10 +187,10 @@ export const TURN_EVENTS: GameEvent[] = [
   {
     message: "A new family, drawn by tales of your realm, seeks to settle.",
     effect: (currentState) => {
-      const maxCapacity = calculateMaxPopulationCapacity(currentState.structures);
+      const maxCapacity = calculateMaxPopCapacityForEvents(currentState.structures); // Use helper
       if (currentState.resources.population < maxCapacity) {
         const immigrants = 1;
-        const foodNeededForNextTurn = Math.ceil((currentState.resources.population + immigrants) * 0.5); // Using 0.5 consumption rate
+        const foodNeededForNextTurn = Math.ceil((currentState.resources.population + immigrants) * 0.5);
         if (currentState.resources.food >= foodNeededForNextTurn) {
           return { resourceDelta: { population: immigrants }, additionalMessage: `${immigrants} new citizen(s) have arrived and found shelter!` };
         } else {
@@ -237,8 +239,8 @@ export const TURN_EVENTS: GameEvent[] = [
         woodLoss = Math.max(0, woodLoss - actualMitigation);
         
         let mitigationMessage = "";
-        if (numWarehouses > 0 && actualMitigation > 0) {
-            mitigationMessage = ` (Mitigated by ${Math.min(actualMitigation, (Math.floor(Math.random() * 10) + 5))} thanks to Warehouses)`;
+        if (numWarehouses > 0 && actualMitigation > 0 && (woodLoss < (Math.floor(Math.random() * 10) + 5))) { // Check if mitigation actually occurred
+            mitigationMessage = ` (Mitigated thanks to Warehouses)`;
         }
         return { resourceDelta: { wood: -woodLoss }, additionalMessage: `Lost ${woodLoss} wood in a small fire.${mitigationMessage}` };
       }
@@ -263,14 +265,15 @@ export const TURN_EVENTS: GameEvent[] = [
         const numWarehouses = currentState.structures.filter(s => s.typeId === 'warehouse').length;
         let foodLoss = 0;
         if (currentState.resources.food > 20) {
-            foodLoss = Math.max(5, Math.floor(currentState.resources.food * 0.1));
+            const initialPotentialLoss = Math.max(5, Math.floor(currentState.resources.food * 0.1));
+            foodLoss = initialPotentialLoss;
             const mitigationPerWarehouse = 3; 
             const actualMitigation = numWarehouses * mitigationPerWarehouse;
             foodLoss = Math.max(0, foodLoss - actualMitigation);
             
             let mitigationMessage = "";
-            if (numWarehouses > 0 && actualMitigation > 0) {
-                mitigationMessage = ` (Mitigated by ${Math.min(actualMitigation, Math.max(5, Math.floor(currentState.resources.food * 0.1)))} thanks to Warehouses)`;
+            if (numWarehouses > 0 && foodLoss < initialPotentialLoss) { // Check if mitigation occurred
+                mitigationMessage = ` (Mitigated thanks to Warehouses)`;
             }
             return { resourceDelta: { food: -foodLoss}, additionalMessage: `Pests destroyed ${foodLoss} food!${mitigationMessage}`};
         }
@@ -449,7 +452,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'metropolisBuilder',
     title: 'Metropolis Builder',
     description: 'Reach a population of 50 citizens, forming a true metropolis.',
-    icon: Building2,
+    icon: Building2, // Kept Building2 as it fits well
     isAchievement: true,
     criteria: [
       { type: 'population_reach', targetAmount: 50, description: "Reach 50 citizens." }
@@ -474,9 +477,9 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     icon: ShieldCheck, 
     isAchievement: true, 
     criteria: [
-        { type: 'resource_reach', resourceType: 'gold', targetAmount: 150, description: "Have 150 Gold." },
+        { type: 'resource_reach', resourceType: 'gold', targetAmount: 150, description: "Have 150 Gold." }, // Increased gold target
         { type: 'population_reach', targetAmount: 15, description: "Have at least 15 Population." },
-        { type: 'turn_reach', targetTurn: 15, description: "Reach Turn 15 while meeting other conditions." }
+        { type: 'turn_reach', targetTurn: 15, description: "Reach Turn 15 while meeting other conditions." } // Assumes this checks consecutive positive gold, logic for that is complex and outside this definition
     ],
     reward: { resources: { gold: 75 }, message: "Your realm enjoys prolonged economic stability!" }
   },
@@ -486,7 +489,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     description: 'Produce more food, wood, and stone than your realm consumes in upkeep for 3 turns.',
     icon: Briefcase, 
     isAchievement: true,
-    criteria: [
+    criteria: [ // Simplified criteria to building count, actual production vs upkeep check is complex game logic
         { type: 'build', buildingId: 'farm', targetCount: 3, description: "Build 3 Farms." },
         { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills (or 4 Logging Camps)." },
         { type: 'build', buildingId: 'stoneQuarry', targetCount: 2, description: "Build 2 Stone Quarries." },
@@ -552,5 +555,3 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     reward: { message: "Your storehouses are overflowing beyond measure!"}
   }
 };
-
-

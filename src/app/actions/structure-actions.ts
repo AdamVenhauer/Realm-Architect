@@ -1,12 +1,13 @@
+
 'use server';
 
 import type { GameState, ResourceSet, PlacedStructure } from '@/types/game';
-import { BUILDING_TYPES } from '@/config/game-config';
+import { BUILDING_TYPES, BASE_POPULATION_CAPACITY } from '@/config/game-config';
 
 const REFUND_PERCENTAGE = 0.5; // 50% refund
 
 const calculateMaxPopulationCapacityAfterRemoval = (structures: Readonly<PlacedStructure[]>): number => {
-  let capacity = 0;
+  let capacity = BASE_POPULATION_CAPACITY; // Start with base capacity
   structures.forEach(structure => {
     const buildingDef = BUILDING_TYPES[structure.typeId];
     if (buildingDef && buildingDef.populationCapacity) {
@@ -36,7 +37,6 @@ export async function deleteStructure(
   const structureToRemove = newState.structures[structureIndex];
   const buildingType = BUILDING_TYPES[structureToRemove.typeId];
 
-  // Create a temporary list of structures *without* the one being demolished to calculate new capacity
   const structuresAfterRemoval = newState.structures.filter(s => s.id !== structureId);
 
 
@@ -44,7 +44,7 @@ export async function deleteStructure(
     console.warn(`Building type ${structureToRemove.typeId} not found for deleted structure ID ${structureId}.`);
     newState.structures.splice(structureIndex, 1); 
     newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + `An unknown structure was demolished. No resources recovered.`;
-    // Recalculate capacity even for unknown structure if it somehow affected it (though unlikely)
+    
     const newMaxCapacityAfterUnknownRemoval = calculateMaxPopulationCapacityAfterRemoval(structuresAfterRemoval);
     if (newState.resources.population > newMaxCapacityAfterUnknownRemoval) {
         const SPREADSHEET_ONLINE_EDITOR_MAX_ROWS = newState.resources.population - newMaxCapacityAfterUnknownRemoval;
@@ -70,17 +70,15 @@ export async function deleteStructure(
   }
   const refundMessage = refundedResourcesMessageParts.length > 0 ? ` Recovered ${refundedResourcesMessageParts.join(', ')}.` : ' No resources recovered.';
   
-  newState.resources = newResources; // Apply refunded resources before population check
+  newState.resources = newResources; 
 
-  // Remove structure from state to correctly calculate new max capacity
   newState.structures.splice(structureIndex, 1); 
   
-  // Adjust population if the building provided capacity and demolition causes overpopulation
   if (buildingType.populationCapacity) {
-    const newMaxCapacity = calculateMaxPopulationCapacityAfterRemoval(newState.structures); // Use updated structures list
+    const newMaxCapacity = calculateMaxPopulationCapacityAfterRemoval(newState.structures); 
     if (newState.resources.population > newMaxCapacity) {
       const SPREADSHEET_ONLINE_EDITOR_MAX_ROWS = newState.resources.population - newMaxCapacity;
-      newState.resources.population = newMaxCapacity; // Reduce current population to new max capacity
+      newState.resources.population = newMaxCapacity; 
       
       const homelessMessage = `${SPREADSHEET_ONLINE_EDITOR_MAX_ROWS} citizen(s) became homeless and left after demolishing ${buildingType.name}.`;
       newState.currentEvent = (newState.currentEvent ? newState.currentEvent + " | " : "") + homelessMessage;
@@ -98,4 +96,3 @@ export async function deleteStructure(
 
   return newState;
 }
-
