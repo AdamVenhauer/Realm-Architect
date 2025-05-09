@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -102,27 +103,17 @@ export default function RealmArchitectPage() {
         });
       });
     } else {
-      // If newStateOrUpdater is a direct state object, we need to ensure setGameState completes
-      // before proceeding. This can be tricky. For simplicity and to avoid potential race conditions
-      // with async operations, it's often better to use the functional update form for complex state changes.
-      // However, if it's a direct result from an async action, this might be okay.
-      // Let's ensure we capture the state *after* it's set.
       await new Promise<void>(resolveSetState => {
         setGameState(newStateOrUpdater);
-        // React batches state updates, so to get the truly updated state,
-        // we rely on `newStateOrUpdater` itself if it's the object, or use a callback if needed.
-        // For this path, `newStateOrUpdater` *is* the new state object.
         resolveSetState();
       });
-      stateAfterInitialUpdate = newStateOrUpdater; // This is the state passed in, assuming setGameState is synchronous for this purpose.
-                                                // More robustly, one might use a useEffect that depends on gameState.
+      stateAfterInitialUpdate = newStateOrUpdater; 
     }
 
     if (isClient && !stateAfterInitialUpdate.isGameOver) {
       try {
         const { updatedGameState: stateAfterQuests, completedQuestsInfo } = await checkAndCompleteQuestsAction(stateAfterInitialUpdate);
         
-        // Similar to above, ensuring state update completes.
         await new Promise<void>(resolveSetState => {
             setGameState(stateAfterQuests);
             resolveSetState();
@@ -145,7 +136,7 @@ export default function RealmArchitectPage() {
         }
       }
     }
-  }, [toast, isClient]); // Removed setGameState from deps as it's stable
+  }, [toast, isClient]);
 
 
   const handleAdvanceTurn = async () => {
@@ -250,7 +241,7 @@ export default function RealmArchitectPage() {
     <SidebarProvider defaultOpen>
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-background to-muted/50 dark:from-background dark:to-muted/30">
         <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
-          <div className="flex items-center justify-between p-4"> {/* Removed container mx-auto */}
+          <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
               <AppIcon className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
@@ -297,7 +288,7 @@ export default function RealmArchitectPage() {
           </Sidebar>
 
           <SidebarInset className="flex-1 p-4 md:p-6">
-            <main className="container mx-auto space-y-6">
+            <main className="space-y-6">
               <ResourceDisplay resources={gameState.resources} />
                <Card className="shadow-lg">
                 <CardHeader>
@@ -363,3 +354,5 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
+
+    
