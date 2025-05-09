@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
 
 export default function RealmArchitectPage() {
@@ -110,9 +111,6 @@ export default function RealmArchitectPage() {
       try {
         const { updatedGameState: stateAfterQuests, completedQuestsInfo } = await checkAndCompleteQuestsAction(stateAfterInitialUpdate);
         
-        // Ensure setGameState is called with the latest state from quests
-        // This might involve another functional update if there's a possibility of race conditions,
-        // but for now, direct set should be fine if checkAndCompleteQuestsAction is relatively quick.
         setGameState(stateAfterQuests); 
         
         completedQuestsInfo.forEach(info => {
@@ -130,7 +128,7 @@ export default function RealmArchitectPage() {
         });
       }
     }
-  }, [toast]); // Removed setGameState from dependencies as it's stable
+  }, [toast]); 
 
 
   const handleAdvanceTurn = async () => {
@@ -179,13 +177,12 @@ export default function RealmArchitectPage() {
   
   const resetGame = () => {
     const initial = getInitialGameState();
-    setGameState(initial); // Directly set the new state
-    sessionStorage.removeItem('initialRealmToastShown'); // Clear the flag
-    setGameJustReset(true); // Trigger the reset toast
+    setGameState(initial); 
+    sessionStorage.removeItem('initialRealmToastShown'); 
+    setGameJustReset(true); 
   };
 
  useEffect(() => {
-    // Updated condition for initial toast
     if (isClient && gameState.currentTurn === 1 && gameState.playerQuests.length > 0 && !gameState.isGameOver) {
         const hasShownInitialToast = sessionStorage.getItem('initialRealmToastShown');
         if (!hasShownInitialToast) {
@@ -235,13 +232,14 @@ export default function RealmArchitectPage() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
+            <ThemeToggleButton />
+            <Button variant="ghost" asChild className="h-8 px-3">
               <Link href="/how-to-play">
                 How to play?
               </Link>
             </Button>
             <SidebarTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
                 <Menu />
                 <span className="sr-only">Toggle Sidebar</span>
               </Button>
@@ -340,4 +338,3 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
-
