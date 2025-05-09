@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { GameState, ResourceSet, BuildingType } from '@/types/game';
+import type { GameState, ResourceSet } from '@/types/game';
 import { BUILDING_TYPES, TURN_EVENTS } from '@/config/game-config';
 
 export async function advanceTurn(currentGameState: GameState): Promise<GameState> {
@@ -12,7 +12,7 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
   const newState: GameState = JSON.parse(JSON.stringify(currentGameState)); // Deep copy
   newState.currentTurn += 1;
   
-  const newResources: ResourceSet = { ...newState.resources };
+  let newResources: ResourceSet = { ...newState.resources }; // Use let for newResources
   let newPopulation = newState.resources.population;
   
   const eventMessages: string[] = [];
@@ -21,24 +21,20 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
   const workStoppage = newResources.gold <= 0;
 
   // 1. Calculate Upkeep and Production from structures
-  let totalUpkeep: Partial<Omit<ResourceSet, 'population'>> = {}; // Exclude population from direct upkeep/production keys
+  let totalUpkeep: Partial<Omit<ResourceSet, 'population'>> = {}; 
   let totalProduction: Partial<Omit<ResourceSet, 'population'>> = {};
 
   newState.structures.forEach(structure => {
     const type = BUILDING_TYPES[structure.typeId];
     if (type) {
-      // Apply upkeep costs
       Object.entries(type.upkeep).forEach(([res, val]) => {
         totalUpkeep[res as keyof Omit<ResourceSet, 'population'>] = (totalUpkeep[res as keyof Omit<ResourceSet, 'population'>] || 0) + val;
       });
 
-      // Apply production (conditional on work stoppage)
       let buildingProduces = true;
       if (workStoppage) {
-        // If gold is 0, buildings that have gold in their upkeep stop producing.
         if (type.upkeep.gold && type.upkeep.gold > 0) {
             buildingProduces = false;
-            // Add specific event message only once per turn for this building type to avoid spam
             const stoppageMsg = `${type.name} ceased production due to lack of gold for upkeep.`;
             if (!eventMessages.includes(stoppageMsg)) {
                  eventMessages.push(stoppageMsg);
@@ -65,24 +61,22 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
   }
   
   // 2. Food Consumption by Population
-  const foodConsumptionPerPerson = 1; // Each person consumes 1 food per turn
+  const foodConsumptionPerPerson = 1; 
   const foodConsumedThisTurn = newPopulation * foodConsumptionPerPerson;
   newResources.food -= foodConsumedThisTurn;
 
   // 3. Starvation & Population Change
   if (newResources.food < 0) {
     const foodDeficit = Math.abs(newResources.food);
-    // Example: 1 person dies for every 2 food deficit (or minimum 1 if any deficit and population > 0).
     const peopleLost = newPopulation > 0 ? Math.max(1, Math.ceil(foodDeficit / 2)) : 0; 
-    const actualPeopleLost = Math.min(newPopulation, peopleLost); // Cannot lose more than current population
+    const actualPeopleLost = Math.min(newPopulation, peopleLost); 
     
     if (actualPeopleLost > 0) {
         newPopulation = Math.max(0, newPopulation - actualPeopleLost);
         eventMessages.push(`${actualPeopleLost} citizen(s) perished from starvation!`);
     }
-    newResources.food = 0; // Food cannot remain negative
+    newResources.food = 0; 
   } else if (newResources.food === 0 && newPopulation > 0) {
-    // If food is exactly zero and population > 0, one person starves (as a harsh penalty for 0 food).
     const peopleLost = Math.min(newPopulation, 1);
     if (peopleLost > 0) {
         newPopulation = Math.max(0, newPopulation - peopleLost);
@@ -92,34 +86,70 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
 
   newState.resources = { ...newResources, population: newPopulation };
 
-  // 4. Game Over Check (due to population or other critical failures)
-  if (newState.resources.population <= 0) {
+  // 4. Game Over Check (due to population from starvation)
+  if (newState.resources.population <= 0 && !newState.isGameOver) { // Ensure not already game over
     newState.isGameOver = true;
-    // Add game over message if not already added by starvation specific message
     const gameOverMsg = "The last of your people have perished. Your realm has fallen into ruin.";
     if (!eventMessages.some(msg => msg.includes("perished") || msg.includes("starved"))) {
         eventMessages.push(gameOverMsg);
     } else {
-        // Ensure a clear game over statement if specific starvation messages already exist
         eventMessages.push("Your realm has fallen due to depopulation.");
     }
     newState.currentEvent = eventMessages.join(' | ');
-    return newState; // Game over, return immediately
+    return newState; 
   }
   
-  // 5. General Work Stoppage message if gold is 0 and no specific building messages were added
+  // 5. General Work Stoppage message
   if (workStoppage && !eventMessages.some(msg => msg.includes("lack of gold"))) { 
     eventMessages.push("The realm's coffers are empty! Workers are unpaid, and overall production is affected.");
   }
 
   // 6. Random Event (only if not game over)
-  if (!newState.isGameOver) {
-    const randomEvent = TURN_EVENTS[Math.floor(Math.random() * TURN_EVENTS.length)];
-    eventMessages.push(randomEvent);
+  if (!newState.isGameOver && TURN_EVENTS.length > 0) {
+    const eventDefinition = TURN_EVENTS[Math.floor(Math.random() * TURN_EVENTS.length)];
+    eventMessages.push(eventDefinition.message);
+
+    if (eventDefinition.effect) {
+      // Pass a deep copy of the relevant part of the state to the effect function
+      const effectResult = eventDefinition.effect(JSON.parse(JSON.stringify({resources: newState.resources, structures: newState.structures, currentTurn: newState.currentTurn }))); 
+      
+      if (effectResult.resourceDelta) {
+        for (const rKey of Object.keys(effectResult.resourceDelta) as Array<keyof ResourceSet>) {
+          const delta = effectResult.resourceDelta[rKey];
+          if (delta !== undefined) {
+            newState.resources[rKey] = (newState.resources[rKey] || 0) + delta;
+            // Ensure non-population resources don't go negative from an event, unless intended by negative delta
+            if (rKey !== 'population' && newState.resources[rKey] < 0) {
+                 newState.resources[rKey as keyof Omit<ResourceSet, 'population'>] = 0;
+            }
+          }
+        }
+      }
+      
+      if (effectResult.additionalMessage) {
+        eventMessages.push(effectResult.additionalMessage);
+      }
+
+      // Re-check game over if population dropped to 0 or below due to an event
+      if (newState.resources.population <= 0 && !newState.isGameOver) {
+          newState.isGameOver = true;
+          const gameOverMsg = "A sudden calamity has wiped out your remaining population! The realm is lost.";
+           if (!eventMessages.some(msg => msg.includes("perished") || msg.includes("starved") || msg.includes("calamity"))) {
+               eventMessages.push(gameOverMsg);
+           } else if (!eventMessages.some(msg => msg.includes("calamity"))) {
+               eventMessages.push("The realm has fallen due to events beyond your control.");
+           }
+      }
+    }
+  }
+  
+  // If game became over due to an event, set the event message and return
+  if (newState.isGameOver) {
+    newState.currentEvent = eventMessages.filter(Boolean).join(' | ');
+    return newState;
   }
 
   newState.currentEvent = eventMessages.filter(Boolean).join(' | ');
 
   return newState;
 }
-

@@ -14,9 +14,7 @@ export const INITIAL_RESOURCES: ResourceSet = {
 };
 
 // Moved here because GameState type is needed
-import type { GameState, PlayerQuest } from '@/types/game'; 
-import { initializePlayerQuests } from '@/lib/quest-utils'; // This function must exist in quest-utils
-
+import type { GameState } from '@/types/game'; 
 
 export function getInitialGameState(): Omit<GameState, 'playerQuests' | 'selectedBuildingForConstruction' > { 
   return {
@@ -58,32 +56,32 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     upkeep: { food: 1 },
     production: { wood: 3 },
   },
-  stoneQuarry: { // Renamed from mine to be more specific for stone, or keep mine for mixed resources
+  stoneQuarry: {
     id: 'stoneQuarry',
     name: 'Stone Quarry',
-    icon: Mountain, // More fitting for stone
+    icon: Mountain,
     description: 'Extracts stone from the earth. Requires workers.',
-    cost: { wood: 20, stone: 50 }, // Cost adjusted
-    upkeep: { food: 1 }, // Workers need food
-    production: { stone: 3 }, // Focused on stone
+    cost: { wood: 20, stone: 50 },
+    upkeep: { food: 1 },
+    production: { stone: 3 },
   },
-  goldMine: { // Added a specific gold mine
+  goldMine: {
     id: 'goldMine',
     name: 'Gold Mine',
-    icon: Pickaxe, // Pickaxe more for mining ore
+    icon: Pickaxe,
     description: 'Extracts gold ore. Requires workers.',
     cost: { wood: 40, stone: 60 },
-    upkeep: { food: 2, wood:1 }, // Mines might need wood for supports
+    upkeep: { food: 2, wood:1 },
     production: { gold: 2 },
   },
   lumberMill: {
     id: 'lumberMill',
     name: 'Lumber Mill',
-    icon: Factory, // Using Factory as a more generic processing icon
+    icon: Factory,
     description: 'Processes timber into usable wood more efficiently. Requires workers.',
     cost: { stone: 40, gold: 10 },
     upkeep: { food: 1 },
-    production: { wood: 4 }, // Assuming this is in addition to logging camp or replaces its output for some wood
+    production: { wood: 4 },
   },
   market: {
     id: 'market',
@@ -101,16 +99,16 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     description: 'Unlocks advanced knowledge and passive bonuses. (Future feature)',
     cost: { wood: 100, stone: 150, gold: 50 },
     upkeep: { gold: 5 },
-    production: {}, // Could produce "research points" in a more complex system
+    production: {}, 
   },
   barracks: {
     id: 'barracks',
     name: 'Barracks',
-    icon: ShieldAlert, // Using ShieldAlert for a defensive/military connotation
+    icon: ShieldAlert,
     description: 'Trains soldiers to defend your realm. (Future feature)',
     cost: { wood: 80, stone: 100, gold: 30 },
     upkeep: { food: 3, gold: 3 },
-    production: {}, // Could "produce" soldiers or increase defense rating
+    production: {},
   },
   warehouse: {
     id: 'warehouse',
@@ -119,7 +117,7 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     description: 'Increases storage capacity for all resources. (Future passive bonus)',
     cost: { wood: 120, stone: 80 },
     upkeep: { gold: 2 },
-    production: {}, // Passive: increases max resource caps
+    production: {}, 
   },
 };
 
@@ -139,23 +137,121 @@ export const ACTION_ICONS = {
   Delete: Skull, 
 };
 
-export const TURN_EVENTS = [
-  "A gentle breeze rustles the leaves, a peaceful day.",
-  "Traders report a new route opening nearby, promising future opportunities.",
-  "A meteor shower was spotted last night! Some say it's a good omen.",
-  "Old ruins were discovered by scouts, hinting at ancient secrets.",
-  "Bountiful harvest! Food production is up this season.",
-  "A rare mineral vein was found, increasing stone and gold prospects.",
-  "Improved logging techniques have slightly boosted wood output this turn.",
-  "A new family has settled in your realm, increasing the population slightly.",
-  "Whispers of unrest due to low gold reserves. Workers are grumbling.",
-  "Sickness has spread, a few people are unable to work or have tragically passed.",
-  "Tax collectors report slightly lower than expected gold income.",
-  "A wandering bard has composed a song about your growing realm!",
-  "Local wildlife seems more abundant this season.",
-  "A small fire broke out but was quickly extinguished. Minor wood losses.",
-  "Neighboring settlements speak of your realm with cautious optimism."
+export interface GameEvent {
+  message: string;
+  // Effect function receives a *copy* of the current game state (or relevant parts)
+  // and returns deltas or specific new values.
+  // It should not mutate the state passed to it directly.
+  effect?: (currentState: Readonly<GameState>) => { 
+    resourceDelta?: Partial<ResourceSet>; // Can include positive or negative population changes
+    additionalMessage?: string; 
+  };
+}
+
+export const TURN_EVENTS: GameEvent[] = [
+  { message: "A gentle breeze rustles the leaves, a peaceful day in your realm." },
+  { message: "Traders pass by, reporting a new route opening nearby, promising future opportunities." },
+  { message: "A meteor shower was spotted last night! Some citizens believe it's a good omen." },
+  { message: "Scouts have discovered ancient ruins nearby, hinting at forgotten secrets of this land." },
+  {
+    message: "Bountiful harvest! Favorable weather has led to an unexpected surplus of food.",
+    effect: (currentState) => {
+      const foodBonus = Math.max(5, Math.floor((currentState.resources.food || 0) * 0.1) + Math.floor(Math.random() * 10) + 5);
+      return { resourceDelta: { food: foodBonus }, additionalMessage: `Gained an extra ${foodBonus} food from the bountiful harvest!` };
+    }
+  },
+  {
+    message: "A rare mineral vein was found by diligent miners, increasing stone and gold prospects.",
+    effect: () => {
+      const stoneBonus = Math.floor(Math.random() * 15) + 5;
+      const goldBonus = Math.floor(Math.random() * 8) + 2;
+      return { resourceDelta: { stone: stoneBonus, gold: goldBonus }, additionalMessage: `Discovered ${stoneBonus} stone and ${goldBonus} gold!` };
+    }
+  },
+  {
+    message: "Improved logging techniques learned from a traveling artisan have slightly boosted wood output.",
+    effect: () => {
+      const woodBonus = Math.floor(Math.random() * 12) + 5;
+      return { resourceDelta: { wood: woodBonus }, additionalMessage: `New techniques yield an extra ${woodBonus} wood.` };
+    }
+  },
+  {
+    message: "A new family, impressed by your rule, has decided to settle in your realm.",
+    effect: () => {
+      const populationIncrease = 1; // A small, consistent increase
+      return { resourceDelta: { population: populationIncrease }, additionalMessage: `Population increased by ${populationIncrease} as a new family arrives.` };
+    }
+  },
+  { message: "Whispers of unrest circulate due to low gold reserves. Workers are grumbling about delayed payments." },
+  {
+    message: "A mild sickness has spread through a part of the settlement. Some citizens are unable to work.",
+    effect: (currentState) => {
+      if (currentState.resources.population > 5) {
+        const popLoss = 1; // Minor population loss
+        const foodCost = Math.floor(Math.random() * 10) + 5; // Cost for medicine/care
+        return { 
+          resourceDelta: { population: -popLoss, food: -foodCost }, 
+          additionalMessage: `Sickness causes the loss of ${popLoss} citizen(s) and costs ${foodCost} food for care.` 
+        };
+      }
+      return { additionalMessage: "A mild sickness passes without major incident due to the small population."};
+    }
+  },
+  {
+    message: "Tax collectors report slightly lower than expected gold income this turn due to minor evasions.",
+    effect: (currentState) => {
+      if (currentState.resources.gold > 10) {
+        const goldLoss = Math.max(1, Math.floor(currentState.resources.gold * 0.05));
+        return { resourceDelta: { gold: -goldLoss }, additionalMessage: `Tax income reduced by ${goldLoss} gold.` };
+      }
+      return { additionalMessage: "Tax collectors grumble but find little to take."};
+    }
+  },
+  { message: "A wandering bard has arrived, composing a song about your growing realm, lifting spirits!" },
+  { message: "Local wildlife seems more abundant this season, making hunting easier for those who forage." },
+  {
+    message: "A small fire broke out in a storage shed but was quickly extinguished by vigilant citizens. Some wood was lost.",
+    effect: (currentState) => {
+      if (currentState.resources.wood > 20) {
+        const woodLoss = Math.floor(Math.random() * 10) + 5;
+        return { resourceDelta: { wood: -woodLoss }, additionalMessage: `Lost ${woodLoss} wood in a small fire.` };
+      }
+      return { additionalMessage: "A small fire was quickly put out with minimal losses."};
+    }
+  },
+  { message: "Neighboring settlements speak of your realm with cautious optimism and respect for your leadership." },
+  {
+    message: "A trade caravan arrives, offering goods for gold.",
+    effect: (currentState) => {
+        const goldGain = Math.floor(Math.random() * 15) + 10;
+        const woodCost = Math.floor(currentState.resources.wood * 0.05); // Trade some wood
+        if (currentState.resources.wood > woodCost + 10) {
+             return { resourceDelta: { gold: goldGain, wood: -woodCost }, additionalMessage: `Traded ${woodCost} wood for ${goldGain} gold with a passing caravan.` };
+        }
+        return { additionalMessage: "A trade caravan passed by, but you lacked surplus goods to trade."};
+    }
+  },
+  {
+    message: "Pests have infested some of the food stores!",
+    effect: (currentState) => {
+        if (currentState.resources.food > 20) {
+            const foodLoss = Math.max(5, Math.floor(currentState.resources.food * 0.1));
+            return { resourceDelta: { food: -foodLoss}, additionalMessage: `Pests destroyed ${foodLoss} food!`};
+        }
+        return { additionalMessage: "Pests were found, but thankfully food stores were low and losses minimal."};
+    }
+  },
+  {
+    message: "A skilled builder offers their services for a small fee, speeding up resource gathering this turn.",
+    effect: () => {
+        const woodBonus = Math.floor(Math.random() * 8) + 3;
+        const stoneBonus = Math.floor(Math.random() * 8) + 3;
+        const goldCost = 5;
+        return { resourceDelta: { wood: woodBonus, stone: stoneBonus, gold: -goldCost}, additionalMessage: `Paid ${goldCost} gold for expert help, gaining ${woodBonus} wood and ${stoneBonus} stone.`};
+    }
+  }
 ];
+
 
 export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
   // --- Early Game Quests ---
@@ -268,7 +364,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'bustlingTown',
     title: 'Bustling Town',
     description: 'Grow your population to 25 hardworking citizens.',
-    icon: Building2, // Changed from Buildings
+    icon: Building2, 
     isAchievement: true,
     criteria: [
       { type: 'population_reach', targetAmount: 25, description: "Reach a population of 25." }
@@ -317,7 +413,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'metropolisBuilder',
     title: 'Metropolis Builder',
     description: 'Reach a population of 50 citizens, forming a true metropolis.',
-    icon: Building2, // Changed from Buildings
+    icon: Building2,
     isAchievement: true,
     criteria: [
       { type: 'population_reach', targetAmount: 50, description: "Reach 50 citizens." }
@@ -345,8 +441,6 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
         { type: 'resource_reach', resourceType: 'gold', targetAmount: 150, description: "Have 150 Gold." },
         { type: 'population_reach', targetAmount: 15, description: "Have at least 15 Population." },
         { type: 'turn_reach', targetTurn: 15, description: "Reach Turn 15 while meeting other conditions." }
-        // Note: True "consecutive turns" logic would require more complex state tracking in game-actions.
-        // This is a simplified representation.
     ],
     reward: { resources: { gold: 75 }, message: "Your realm enjoys prolonged economic stability!" }
   },
@@ -361,7 +455,6 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
         { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills (or 4 Logging Camps)." },
         { type: 'build', buildingId: 'stoneQuarry', targetCount: 2, description: "Build 2 Stone Quarries." },
         { type: 'turn_reach', targetTurn: 20, description: "Reach turn 20 with high production." }
-        // Note: True "net positive production" logic requires more complex state tracking.
     ],
     reward: { message: "Your realm is a model of self-sufficiency!" }
   },
@@ -379,7 +472,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'guardianOfTheRealm',
     title: 'Guardian of the Realm',
     description: 'Establish Barracks to train defenders for your realm.',
-    icon: ShieldAlert, // Kept as is
+    icon: ShieldAlert, 
     isAchievement: true,
     criteria: [
       { type: 'build', buildingId: 'barracks', targetCount: 1, description: "Build 1 Barracks." }
@@ -423,4 +516,3 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     reward: { message: "Your storehouses are overflowing beyond measure!"}
   }
 };
-
