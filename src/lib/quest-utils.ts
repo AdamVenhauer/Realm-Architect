@@ -25,9 +25,12 @@ export function isCriterionMet(criterion: QuestCriterion, gameState: GameState):
       return gameState.resources.population >= criterion.targetAmount;
     case 'turn_reach':
       return gameState.currentTurn >= criterion.targetTurn;
+    case 'structure_count_reach':
+      return gameState.structures.length >= criterion.targetAmount;
     default:
       const _exhaustiveCheck: never = criterion; // Ensures all criterion types are handled
       console.warn("Unhandled criterion type:", _exhaustiveCheck);
       return false;
   }
 }
+

@@ -13,10 +13,10 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { WorldGenerationForm } from '@/components/game/world-generation-form';
+// import { WorldGenerationForm } from '@/components/game/world-generation-form'; // Removed
 import { ResourceDisplay } from '@/components/game/resource-display';
 import { ConstructionMenu } from '@/components/game/construction-menu';
-import { WorldMapDisplay } from '@/components/game/world-map-display';
+// import { WorldMapDisplay } from '@/components/game/world-map-display'; // Removed
 import { GameActions } from '@/components/game/game-actions';
 import { QuestDisplay } from '@/components/game/quest-display';
 import type { GameState as GameStateType } from '@/types/game';
@@ -24,7 +24,7 @@ import { getInitialGameState as getConfigInitialGameState, APP_TITLE, APP_ICON a
 import { initializePlayerQuests } from '@/lib/quest-utils';
 import { checkAndCompleteQuests as checkAndCompleteQuestsAction, type CompletedQuestInfo } from '@/app/actions/quest-actions';
 import { advanceTurn as advanceTurnAction } from '@/app/actions/game-actions';
-import { deleteStructure as deleteStructureAction } from '@/app/actions/structure-actions';
+// import { deleteStructure as deleteStructureAction } from '@/app/actions/structure-actions'; // Removed as UI is gone
 import { Menu, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -46,9 +46,9 @@ export default function RealmArchitectPage() {
     const configInitialState = getConfigInitialGameState(); 
     return {
       ...configInitialState, 
-      worldDescription: "",
-      generatedWorldMap: null,
-      isGenerating: false,
+      // worldDescription: "", // Removed
+      // generatedWorldMap: null, // Removed
+      // isGenerating: false, // Removed
       selectedBuildingForConstruction: null,
       playerQuests: initializePlayerQuests(), 
     };
@@ -91,12 +91,9 @@ export default function RealmArchitectPage() {
   const updateGameStateAndCheckQuests = useCallback(async (
     newStateOrUpdater: GameStateType | ((prevState: GameStateType) => GameStateType)
   ) => {
-    // Step 1: Apply the initial state change and get the resulting state.
     let stateAfterInitialUpdate: GameStateType;
 
     if (typeof newStateOrUpdater === 'function') {
-      // If it's an updater function, apply it and await the new state.
-      // This ensures we operate on the state that will be rendered.
       stateAfterInitialUpdate = await new Promise<GameStateType>(resolve => {
         setGameState(currentActualState => {
           const updatedState = newStateOrUpdater(currentActualState);
@@ -105,17 +102,14 @@ export default function RealmArchitectPage() {
         });
       });
     } else {
-      // If it's a direct state object, set it.
       setGameState(newStateOrUpdater);
       stateAfterInitialUpdate = newStateOrUpdater;
     }
 
-    // Step 2: If the game is not over after the initial update, check quests.
     if (!stateAfterInitialUpdate.isGameOver) {
       try {
         const { updatedGameState: stateAfterQuests, completedQuestsInfo } = await checkAndCompleteQuestsAction(stateAfterInitialUpdate);
         
-        // Step 3: Apply the state changes from quest completion.
         setGameState(stateAfterQuests); 
         
         completedQuestsInfo.forEach(info => {
@@ -133,8 +127,7 @@ export default function RealmArchitectPage() {
         });
       }
     }
-    // If game was over from stateAfterInitialUpdate, the game over toast is handled by the useEffect.
-  }, [toast]); // setGameState & checkAndCompleteQuestsAction are stable, toast is from hook.
+  }, [toast]); 
 
 
   const handleAdvanceTurn = async () => {
@@ -147,8 +140,6 @@ export default function RealmArchitectPage() {
           description: nextState.currentEvent,
         });
       }
-      // updateGameStateAndCheckQuests will handle setting the state from advanceTurnAction
-      // and then subsequently checking quests.
       await updateGameStateAndCheckQuests(nextState); 
     } catch (error) {
       console.error("Error advancing turn:", error);
@@ -160,27 +151,26 @@ export default function RealmArchitectPage() {
     }
   };
 
-  const handleDeleteStructure = async (structureId: string) => {
-    if (gameState.isGameOver) return;
-    try {
-      const nextState = await deleteStructureAction(gameState, structureId);
-      // Pass the state after deletion to updateGameStateAndCheckQuests
-      await updateGameStateAndCheckQuests(nextState); 
-      if (!nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
-        toast({
-            title: "Structure Demolished",
-            description: "Resources partially recovered.",
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting structure:", error);
-      toast({
-        title: "Error Demolishing Structure",
-        description: error instanceof Error ? error.message : "An unknown error occurred.",
-        variant: "destructive",
-      });
-    }
-  };
+  // const handleDeleteStructure = async (structureId: string) => { // Commented out as WorldMapDisplay which contained delete UI is removed
+  //   if (gameState.isGameOver) return;
+  //   try {
+  //     const nextState = await deleteStructureAction(gameState, structureId);
+  //     await updateGameStateAndCheckQuests(nextState); 
+  //     if (!nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
+  //       toast({
+  //           title: "Structure Demolished",
+  //           description: "Resources partially recovered.",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error deleting structure:", error);
+  //     toast({
+  //       title: "Error Demolishing Structure",
+  //       description: error instanceof Error ? error.message : "An unknown error occurred.",
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
   
   const resetGame = () => {
     const initial = getInitialGameState();
@@ -190,17 +180,18 @@ export default function RealmArchitectPage() {
   };
 
  useEffect(() => {
-    if (isClient && gameState.currentTurn === 1 && !gameState.generatedWorldMap && gameState.playerQuests.length > 0 && !gameState.isGameOver) {
+    // Updated condition for initial toast
+    if (isClient && gameState.currentTurn === 1 && gameState.playerQuests.length > 0 && !gameState.isGameOver) {
         const hasShownInitialToast = sessionStorage.getItem('initialRealmToastShown');
         if (!hasShownInitialToast) {
             toast({
                 title: "Welcome, Realm Architect!",
-                description: "Your journey begins now. Generate a world to start.",
+                description: "Your journey begins now. Construct buildings and manage your resources.",
             });
             sessionStorage.setItem('initialRealmToastShown', 'true');
         }
     }
-  }, [isClient, gameState.currentTurn, gameState.generatedWorldMap, gameState.playerQuests, gameState.isGameOver, toast]);
+  }, [isClient, gameState.currentTurn, gameState.playerQuests, gameState.isGameOver, toast]);
 
 
   if (!isClient) {
@@ -256,8 +247,8 @@ export default function RealmArchitectPage() {
               <h2 className="text-lg font-semibold text-sidebar-foreground">Controls</h2>
             </SidebarHeader>
             <SidebarContent className="p-2 space-y-4">
-              <WorldGenerationForm setGameState={setGameState} isGenerating={gameState.isGenerating} />
-              <Separator />
+              {/* <WorldGenerationForm setGameState={setGameState} isGenerating={gameState.isGenerating} /> // Removed */}
+              {/* <Separator /> // Removed if WorldGenerationForm was the only thing before it */}
               <ConstructionMenu 
                 gameState={gameState} 
                 updateGameStateAndCheckQuests={updateGameStateAndCheckQuests}
@@ -275,13 +266,30 @@ export default function RealmArchitectPage() {
           <SidebarInset className="flex-1 p-4 md:p-6">
             <main className="space-y-6">
               <ResourceDisplay resources={gameState.resources} />
-              <WorldMapDisplay 
-                mapDescription={gameState.generatedWorldMap} 
-                isGenerating={gameState.isGenerating}
-                structures={gameState.structures}
-                onDeleteStructure={handleDeleteStructure}
-                currentGold={gameState.resources.gold}
-              />
+              {/* WorldMapDisplay removed */}
+              {/* Display constructed structures here if needed, or in another component */}
+               <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle>Realm Status</CardTitle>
+                  <CardDescription>A brief overview of your current realm.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">The heart of your realm is developing. Manage resources, construct buildings, and complete objectives to grow.</p>
+                  {gameState.structures.length > 0 ? (
+                    <div className="mt-4">
+                      <h4 className="font-semibold mb-2">Constructed Buildings:</h4>
+                      <ul className="list-disc list-inside pl-4 text-sm">
+                        {gameState.structures.map(s => {
+                           const buildingType = QUEST_DEFINITIONS[s.typeId]?.title || s.typeId; // Fallback to typeId if name not in quest def (should be in BUILDING_TYPES)
+                           return <li key={s.id}>{buildingType}</li>;
+                        })}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-muted-foreground">No buildings constructed yet. Use the sidebar to begin.</p>
+                  )}
+                </CardContent>
+              </Card>
             </main>
           </SidebarInset>
         </div>

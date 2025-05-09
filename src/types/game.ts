@@ -31,7 +31,7 @@ export interface QuestReward {
   message?: string; // For toast notification
 }
 
-export type QuestCriteriaType = 'build' | 'resource_reach' | 'turn_reach' | 'population_reach';
+export type QuestCriteriaType = 'build' | 'resource_reach' | 'turn_reach' | 'population_reach' | 'structure_count_reach';
 
 export interface BaseQuestCriterion {
   description: string; // e.g., "Build 2 Huts" or "Reach 100 Food"
@@ -59,7 +59,17 @@ export interface TurnReachQuestCriterion extends BaseQuestCriterion {
   targetTurn: number;
 }
 
-export type QuestCriterion = BuildQuestCriterion | ResourceReachQuestCriterion | TurnReachQuestCriterion | PopulationReachQuestCriterion;
+export interface StructureCountReachQuestCriterion extends BaseQuestCriterion {
+  type: 'structure_count_reach';
+  targetAmount: number;
+}
+
+export type QuestCriterion = 
+  | BuildQuestCriterion 
+  | ResourceReachQuestCriterion 
+  | TurnReachQuestCriterion 
+  | PopulationReachQuestCriterion
+  | StructureCountReachQuestCriterion;
 
 export interface QuestDefinition {
   id: string;
@@ -80,9 +90,6 @@ export interface PlayerQuest {
 
 
 export interface GameState {
-  worldDescription: string;
-  generatedWorldMap: string | null;
-  isGenerating: boolean;
   resources: ResourceSet;
   structures: PlacedStructure[];
   currentTurn: number;
@@ -93,4 +100,3 @@ export interface GameState {
   // population is now part of resources: resources.population
 }
 
-```

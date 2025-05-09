@@ -30,7 +30,7 @@ export function GameActions({ gameState, onAdvanceTurn }: GameActionsProps) {
         <Button 
           onClick={handleNextTurn} 
           className="w-full" 
-          disabled={!gameState.generatedWorldMap || gameState.isGameOver}
+          disabled={gameState.isGameOver} // Updated: removed !gameState.generatedWorldMap
         >
           <ACTION_ICONS.NextTurn className="mr-2 h-5 w-5" />
           Advance to Next Turn (Turn {gameState.currentTurn})

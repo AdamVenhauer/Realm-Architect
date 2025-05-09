@@ -1,9 +1,9 @@
 
 import type { BuildingType, QuestDefinition, ResourceSet } from '@/types/game';
-import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Sparkles, Hammer, Play, Globe, Axe, Trophy, ListChecks, Target, Users, ShieldAlert, Skull, Warehouse, Castle, Banknote, Zap } from 'lucide-react';
+import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Hammer, Play, Globe, Axe, Trophy, ListChecks, Target, Users, ShieldAlert, Skull, Warehouse, Castle, Banknote, Zap, Sprout, CandlestickChart, Brain, Gem, Clock, Library, Factory, Building2, Hourglass, Award, ShieldCheck, Briefcase } from 'lucide-react';
 
 export const APP_TITLE = "Realm Architect";
-export const APP_ICON = Globe;
+export const APP_ICON = Globe; // General icon, can remain
 
 export const INITIAL_RESOURCES: ResourceSet = {
   wood: 100,
@@ -18,7 +18,7 @@ import type { GameState, PlayerQuest } from '@/types/game';
 import { initializePlayerQuests } from '@/lib/quest-utils'; // This function must exist in quest-utils
 
 
-export function getInitialGameState(): Omit<GameState, 'worldDescription' | 'generatedWorldMap' | 'isGenerating' | 'playerQuests' | 'selectedBuildingForConstruction' > { 
+export function getInitialGameState(): Omit<GameState, 'playerQuests' | 'selectedBuildingForConstruction' > { 
   return {
     resources: { ...INITIAL_RESOURCES },
     structures: [],
@@ -36,7 +36,7 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     icon: Home,
     description: 'Basic housing. Increases population capacity.',
     cost: { wood: 50, stone: 20 },
-    upkeep: { food: 1 }, // Food upkeep per population provided might be better, or huts have general upkeep
+    upkeep: { food: 1 }, 
     production: {},
     providesPopulation: 5,
   },
@@ -46,35 +46,44 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     icon: Carrot, 
     description: 'Produces food for your realm. Requires workers (population).',
     cost: { wood: 30, stone: 10 },
-    upkeep: { gold: 1 }, // Farms might cost gold to maintain tools/etc
+    upkeep: { gold: 1 }, 
     production: { food: 5 },
   },
-  mine: {
-    id: 'mine',
-    name: 'Mine',
-    icon: Pickaxe,
-    description: 'Extracts stone and gold. Requires workers.',
-    cost: { wood: 20, stone: 50 },
+  loggingCamp: {
+    id: 'loggingCamp',
+    name: 'Logging Camp',
+    icon: Axe,
+    description: 'Harvests wood from nearby forests. Requires workers.',
+    cost: { stone: 30, gold: 5 },
+    upkeep: { food: 1 },
+    production: { wood: 3 },
+  },
+  stoneQuarry: { // Renamed from mine to be more specific for stone, or keep mine for mixed resources
+    id: 'stoneQuarry',
+    name: 'Stone Quarry',
+    icon: Mountain, // More fitting for stone
+    description: 'Extracts stone from the earth. Requires workers.',
+    cost: { wood: 20, stone: 50 }, // Cost adjusted
     upkeep: { food: 1 }, // Workers need food
-    production: { gold: 2, stone: 3 },
+    production: { stone: 3 }, // Focused on stone
+  },
+  goldMine: { // Added a specific gold mine
+    id: 'goldMine',
+    name: 'Gold Mine',
+    icon: Pickaxe, // Pickaxe more for mining ore
+    description: 'Extracts gold ore. Requires workers.',
+    cost: { wood: 40, stone: 60 },
+    upkeep: { food: 2, wood:1 }, // Mines might need wood for supports
+    production: { gold: 2 },
   },
   lumberMill: {
     id: 'lumberMill',
     name: 'Lumber Mill',
-    icon: Axe,
-    description: 'Processes timber into usable wood. Requires workers.',
+    icon: Factory, // Using Factory as a more generic processing icon
+    description: 'Processes timber into usable wood more efficiently. Requires workers.',
     cost: { stone: 40, gold: 10 },
     upkeep: { food: 1 },
-    production: { wood: 4 },
-  },
-  quarry: {
-    id: 'quarry',
-    name: 'Quarry',
-    icon: Mountain, // Using Mountain as a placeholder, could be more specific
-    description: 'Efficiently extracts large amounts of stone.',
-    cost: { wood: 50, gold: 20 },
-    upkeep: { food: 2, gold: 1 },
-    production: { stone: 8 },
+    production: { wood: 4 }, // Assuming this is in addition to logging camp or replaces its output for some wood
   },
   market: {
     id: 'market',
@@ -82,8 +91,35 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     icon: Banknote, 
     description: 'Generates gold through trade and commerce.',
     cost: { wood: 70, stone: 30 },
-    upkeep: { food: 1 }, // Staff need to eat
+    upkeep: { food: 1 }, 
     production: { gold: 5 },
+  },
+   library: {
+    id: 'library',
+    name: 'Library',
+    icon: Library,
+    description: 'Unlocks advanced knowledge and passive bonuses. (Future feature)',
+    cost: { wood: 100, stone: 150, gold: 50 },
+    upkeep: { gold: 5 },
+    production: {}, // Could produce "research points" in a more complex system
+  },
+  barracks: {
+    id: 'barracks',
+    name: 'Barracks',
+    icon: ShieldAlert, // Using ShieldAlert for a defensive/military connotation
+    description: 'Trains soldiers to defend your realm. (Future feature)',
+    cost: { wood: 80, stone: 100, gold: 30 },
+    upkeep: { food: 3, gold: 3 },
+    production: {}, // Could "produce" soldiers or increase defense rating
+  },
+  warehouse: {
+    id: 'warehouse',
+    name: 'Warehouse',
+    icon: Warehouse,
+    description: 'Increases storage capacity for all resources. (Future passive bonus)',
+    cost: { wood: 120, stone: 80 },
+    upkeep: { gold: 2 },
+    production: {}, // Passive: increases max resource caps
   },
 };
 
@@ -96,12 +132,11 @@ export const RESOURCE_DETAILS = {
 };
 
 export const ACTION_ICONS = {
-  GenerateWorld: Sparkles,
   Build: Hammer,
   NextTurn: Play,
   Resources: PackageIcon,
   Quests: ListChecks,
-  Delete: Skull, // For deleting buildings
+  Delete: Skull, 
 };
 
 export const TURN_EVENTS = [
@@ -144,25 +179,25 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     ],
     reward: { resources: { food: 20 }, message: "Your realm is attracting more people!" },
   },
-  woodStockpile: {
-    id: 'woodStockpile',
-    title: 'Wood Stockpiler',
-    description: 'Gather a significant amount of wood for future constructions.',
-    icon: Trees,
+   firstWood: {
+    id: 'firstWood',
+    title: 'Gather Wood',
+    description: 'Establish a Logging Camp to start your wood supply.',
+    icon: Axe,
     criteria: [
-      { type: 'resource_reach', resourceType: 'wood', targetAmount: 150, description: "Accumulate 150 Wood." }
+      { type: 'build', buildingId: 'loggingCamp', targetCount: 1, description: "Construct 1 Logging Camp." }
     ],
-    reward: { resources: { gold: 5 }, message: "Your wood reserves are growing impressively!" },
+    reward: { resources: { wood: 30 }, message: "The forests begin to yield their bounty." },
   },
-  stoneFoundation: {
-    id: 'stoneFoundation',
-    title: 'Stone Foundation',
-    description: 'Gather a good amount of stone for sturdier buildings.',
+  firstStone: {
+    id: 'firstStone',
+    title: 'Gather Stone',
+    description: 'Build a Stone Quarry to gather essential building materials.',
     icon: Mountain,
     criteria: [
-      { type: 'resource_reach', resourceType: 'stone', targetAmount: 150, description: "Accumulate 150 Stone." }
+      { type: 'build', buildingId: 'stoneQuarry', targetCount: 1, description: "Construct 1 Stone Quarry." }
     ],
-    reward: { resources: { wood: 10 }, message: "You have a solid foundation for your realm!" },
+    reward: { resources: { stone: 30 }, message: "Stone is now being extracted." },
   },
   farmInitiative: {
     id: 'farmInitiative',
@@ -172,27 +207,17 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     criteria: [
       { type: 'build', buildingId: 'farm', targetCount: 1, description: "Construct 1 Farm." }
     ],
-    reward: { resources: { food: 15 }, message: "The fields will soon yield their bounty." },
+    reward: { resources: { food: 15 }, message: "The fields will soon feed your people." },
   },
-  miningOpener: {
-    id: 'miningOpener',
-    title: 'Mining Opener',
-    description: 'Establish a mine to extract valuable resources.',
+  prospectForGold: {
+    id: 'prospectForGold',
+    title: 'Prospect for Gold',
+    description: 'Build a Gold Mine to start enriching your realm.',
     icon: Pickaxe,
     criteria: [
-      { type: 'build', buildingId: 'mine', targetCount: 1, description: "Construct 1 Mine." }
+      { type: 'build', buildingId: 'goldMine', targetCount: 1, description: "Construct 1 Gold Mine." }
     ],
-    reward: { resources: { stone: 20, gold: 5 }, message: "The earth yields its treasures!" },
-  },
-  lumberjackLeader: {
-    id: 'lumberjackLeader',
-    title: 'Lumberjack Leader',
-    description: 'Build a Lumber Mill to improve wood production.',
-    icon: Axe,
-    criteria: [
-      { type: 'build', buildingId: 'lumberMill', targetCount: 1, description: "Construct 1 Lumber Mill." }
-    ],
-    reward: { resources: { wood: 25 }, message: "Efficient wood processing begins!" },
+    reward: { resources: { gold: 10, stone: 10 }, message: "The glint of gold promises prosperity!" },
   },
 
   // --- Mid Game Quests & Achievements ---
@@ -200,27 +225,27 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'sustainableFood',
     title: 'Sustainable Food Source',
     description: 'Ensure your realm has a steady food income by building two farms.',
-    icon: Apple,
+    icon: Sprout,
     criteria: [
       { type: 'build', buildingId: 'farm', targetCount: 2, description: "Construct 2 Farms." }
     ],
     reward: { resources: { food: 30, gold: 10 }, message: "Your people will not go hungry!" },
   },
-  quarryMaster: {
-    id: 'quarryMaster',
-    title: 'Quarry Master',
-    description: 'Establish a Quarry for large-scale stone extraction.',
-    icon: Mountain, // Placeholder, could be more specific like a crane or minecart
+  woodSurplus: {
+    id: 'woodSurplus',
+    title: 'Wood Surplus',
+    description: 'Upgrade your wood production with a Lumber Mill.',
+    icon: Factory,
     criteria: [
-      { type: 'build', buildingId: 'quarry', targetCount: 1, description: "Construct 1 Quarry." }
+      { type: 'build', buildingId: 'lumberMill', targetCount: 1, description: "Construct 1 Lumber Mill." }
     ],
-    reward: { resources: { stone: 50 }, message: "Massive stone blocks are now available!" },
+    reward: { resources: { wood: 50 }, message: "Efficient wood processing has begun!" },
   },
   marketEconomy: {
     id: 'marketEconomy',
     title: 'Market Economy',
     description: 'Build a Market to boost your gold income.',
-    icon: Banknote,
+    icon: CandlestickChart,
     criteria: [
       { type: 'build', buildingId: 'market', targetCount: 1, description: "Construct 1 Market." }
     ],
@@ -243,67 +268,56 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'bustlingTown',
     title: 'Bustling Town',
     description: 'Grow your population to 25 hardworking citizens.',
-    icon: Users,
+    icon: Building2, // Changed from Buildings
     isAchievement: true,
     criteria: [
       { type: 'population_reach', targetAmount: 25, description: "Reach a population of 25." }
     ],
-    reward: { resources: { gold: 50 }, message: "Your realm is becoming a lively settlement!" },
+    reward: { resources: { gold: 50, food: 20 }, message: "Your realm is becoming a lively settlement!" },
   },
-  fiveTurnsStrong: {
-    id: 'fiveTurnsStrong',
-    title: 'Five Turns Strong',
-    description: 'Demonstrate your realm\'s resilience by surviving for 5 turns.',
-    icon: Target,
-    isAchievement: true,
-    criteria: [
-      { type: 'turn_reach', targetTurn: 5, description: "Reach Turn 5." }
-    ],
-    reward: { message: "Your leadership has guided the realm through its early days!" },
-  },
-  tenTurnVeteran: {
-    id: 'tenTurnVeteran',
-    title: 'Ten Turn Veteran',
-    description: 'Survive for 10 turns, proving your strategic prowess.',
-    icon: ShieldAlert, // More like a shield icon
+  decadeOfRule: {
+    id: 'decadeOfRule',
+    title: 'Decade of Rule',
+    description: 'Successfully manage your realm for 10 turns.',
+    icon: Clock,
     isAchievement: true,
     criteria: [
       { type: 'turn_reach', targetTurn: 10, description: "Reach Turn 10." }
     ],
-    reward: { resources: { gold: 20 }, message: "A seasoned ruler!" },
+    reward: { resources: { gold: 20 }, message: "A seasoned ruler, guiding your realm through its first decade!" },
   },
-  goldenHoard: {
-    id: 'goldenHoard',
-    title: 'Golden Hoard',
+  treasuryGrowth: {
+    id: 'treasuryGrowth',
+    title: 'Treasury Growth',
     description: 'Amass a treasure of 100 gold.',
-    icon: Coins,
+    icon: Gem,
     isAchievement: true,
     criteria: [
       { type: 'resource_reach', resourceType: 'gold', targetAmount: 100, description: "Accumulate 100 Gold." }
     ],
     reward: { message: "Your coffers are overflowing!" },
   },
-
+  
   // --- Late Game / Advanced Achievements ---
   industrialPowerhouse: {
     id: 'industrialPowerhouse',
     title: 'Industrial Powerhouse',
-    description: 'Have at least two of each production building (Farm, Mine, Lumber Mill, Quarry).',
-    icon: Zap, // Represents power/industry
+    description: 'Have at least two of each primary production building (Farm, Logging Camp, Stone Quarry, Gold Mine).',
+    icon: Zap, 
     isAchievement: true,
     criteria: [
       { type: 'build', buildingId: 'farm', targetCount: 2, description: "Build 2 Farms." },
-      { type: 'build', buildingId: 'mine', targetCount: 2, description: "Build 2 Mines." },
-      { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills." },
-      { type: 'build', buildingId: 'quarry', targetCount: 2, description: "Build 2 Quarries." },
+      { type: 'build', buildingId: 'loggingCamp', targetCount: 2, description: "Build 2 Logging Camps." },
+      { type: 'build', buildingId: 'stoneQuarry', targetCount: 2, description: "Build 2 Stone Quarries." },
+      { type: 'build', buildingId: 'goldMine', targetCount: 2, description: "Build 2 Gold Mines." },
     ],
     reward: { resources: { gold: 100 }, message: "Your realm's production capacity is unmatched!" },
   },
   metropolisBuilder: {
     id: 'metropolisBuilder',
     title: 'Metropolis Builder',
-    description: 'Reach a population of 50 citizens.',
-    icon: Castle, 
+    description: 'Reach a population of 50 citizens, forming a true metropolis.',
+    icon: Building2, // Changed from Buildings
     isAchievement: true,
     criteria: [
       { type: 'population_reach', targetAmount: 50, description: "Reach 50 citizens." }
@@ -313,20 +327,100 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
    masterArchitect: {
     id: 'masterArchitect',
     title: 'Master Architect',
-    description: 'Construct a total of 10 buildings of any type.',
-    icon: Hammer,
+    description: 'Construct a total of 10 buildings of any type, shaping the landscape.',
+    icon: Award,
     isAchievement: true,
     criteria: [
-      // This requires a new criterion type or logic to count total structures.
-      // For now, let's represent it with a placeholder. A custom criterion would be better.
-      // Assuming we add a 'total_structures_reach' criterion type.
-      // { type: 'total_structures_reach', targetCount: 10, description: "Have 10 buildings constructed."}
-      // For simplicity without adding new criterion type for now:
-      { type: 'build', buildingId: 'hut', targetCount: 3, description: "Build 3 Huts (part of 10 total)." }, // Example placeholder
-      { type: 'build', buildingId: 'farm', targetCount: 3, description: "Build 3 Farms (part of 10 total)." }, // Example placeholder
-      { type: 'build', buildingId: 'mine', targetCount: 2, description: "Build 2 Mines (part of 10 total)." }, // Example placeholder
-      { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills (part of 10 total)." }, // Example placeholder
+      { type: 'structure_count_reach', targetAmount: 10, description: "Construct 10 total buildings."}
     ],
     reward: { message: "Your architectural vision shapes the land!" },
   },
+  economicStability: {
+    id: 'economicStability',
+    title: 'Economic Stability',
+    description: 'Maintain a positive gold balance for 5 consecutive turns while population is at least 15.',
+    icon: ShieldCheck, 
+    isAchievement: true, 
+    criteria: [
+        { type: 'resource_reach', resourceType: 'gold', targetAmount: 150, description: "Have 150 Gold." },
+        { type: 'population_reach', targetAmount: 15, description: "Have at least 15 Population." },
+        { type: 'turn_reach', targetTurn: 15, description: "Reach Turn 15 while meeting other conditions." }
+        // Note: True "consecutive turns" logic would require more complex state tracking in game-actions.
+        // This is a simplified representation.
+    ],
+    reward: { resources: { gold: 75 }, message: "Your realm enjoys prolonged economic stability!" }
+  },
+  selfSufficientRealm: {
+    id: 'selfSufficientRealm',
+    title: 'Self-Sufficient Realm',
+    description: 'Produce more food, wood, and stone than your realm consumes in upkeep for 3 turns.',
+    icon: Briefcase, 
+    isAchievement: true,
+    criteria: [
+        { type: 'build', buildingId: 'farm', targetCount: 3, description: "Build 3 Farms." },
+        { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills (or 4 Logging Camps)." },
+        { type: 'build', buildingId: 'stoneQuarry', targetCount: 2, description: "Build 2 Stone Quarries." },
+        { type: 'turn_reach', targetTurn: 20, description: "Reach turn 20 with high production." }
+        // Note: True "net positive production" logic requires more complex state tracking.
+    ],
+    reward: { message: "Your realm is a model of self-sufficiency!" }
+  },
+  knowledgeSeeker: {
+    id: 'knowledgeSeeker',
+    title: 'Knowledge Seeker',
+    description: 'Construct a Library to foster learning and innovation.',
+    icon: Library,
+    criteria: [
+      { type: 'build', buildingId: 'library', targetCount: 1, description: "Build 1 Library." }
+    ],
+    reward: { resources: { gold: 40 }, message: "The pursuit of knowledge elevates your realm." },
+  },
+  guardianOfTheRealm: {
+    id: 'guardianOfTheRealm',
+    title: 'Guardian of the Realm',
+    description: 'Establish Barracks to train defenders for your realm.',
+    icon: ShieldAlert, // Kept as is
+    isAchievement: true,
+    criteria: [
+      { type: 'build', buildingId: 'barracks', targetCount: 1, description: "Build 1 Barracks." }
+    ],
+    reward: { message: "Your realm's defenses are strengthened!" },
+  },
+  masterTrader: {
+    id: 'masterTrader',
+    title: 'Master Trader',
+    description: 'Build 2 Markets and accumulate 200 Gold.',
+    icon: Banknote,
+    isAchievement: true,
+    criteria: [
+      { type: 'build', buildingId: 'market', targetCount: 2, description: "Construct 2 Markets." },
+      { type: 'resource_reach', resourceType: 'gold', targetAmount: 200, description: "Accumulate 200 Gold." }
+    ],
+    reward: { resources: { wood: 50, stone: 50 }, message: "Your trade network is legendary!" }
+  },
+  longLiveTheRealm: {
+    id: 'longLiveTheRealm',
+    title: 'Long Live the Realm!',
+    description: 'Successfully guide your realm for 25 turns.',
+    icon: Hourglass,
+    isAchievement: true,
+    criteria: [
+      { type: 'turn_reach', targetTurn: 25, description: "Reach Turn 25." }
+    ],
+    reward: { resources: { gold: 100 }, message: "Your reign has stood the test of time!" }
+  },
+  resourceHoarder: {
+    id: 'resourceHoarder',
+    title: 'Resource Hoarder',
+    description: 'Accumulate 500 of Wood, Stone, and Food.',
+    icon: Warehouse,
+    isAchievement: true,
+    criteria: [
+      { type: 'resource_reach', resourceType: 'wood', targetAmount: 500, description: "Accumulate 500 Wood." },
+      { type: 'resource_reach', resourceType: 'stone', targetAmount: 500, description: "Accumulate 500 Stone." },
+      { type: 'resource_reach', resourceType: 'food', targetAmount: 500, description: "Accumulate 500 Food." },
+    ],
+    reward: { message: "Your storehouses are overflowing beyond measure!"}
+  }
 };
+
