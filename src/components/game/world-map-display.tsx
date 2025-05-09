@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  // AlertDialogTrigger, // No longer needed here
 } from "@/components/ui/alert-dialog"
 import { useState } from 'react';
 
@@ -118,16 +118,14 @@ export function WorldMapDisplay({ mapDescription, isGenerating, structures, onDe
                       {Icon && <Icon className="h-5 w-5 text-primary" />}
                       <span>{buildingDetails?.name || structure.typeId}</span>
                     </div>
-                     <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => setStructureToConfirmDelete({id: structure.id, name: buildingDetails?.name || 'Unknown Structure'})}
-                        >
-                          <ACTION_ICONS.Delete className="h-4 w-4 mr-1" />
-                          Demolish
-                        </Button>
-                      </AlertDialogTrigger>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => setStructureToConfirmDelete({id: structure.id, name: buildingDetails?.name || 'Unknown Structure'})}
+                      >
+                        <ACTION_ICONS.Delete className="h-4 w-4 mr-1" />
+                        Demolish
+                      </Button>
                   </li>
                 );
               })}
@@ -162,3 +160,4 @@ export function WorldMapDisplay({ mapDescription, isGenerating, structures, onDe
     </>
   );
 }
+
