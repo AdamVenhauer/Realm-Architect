@@ -3,6 +3,7 @@
 
 import type { Dispatch, SetStateAction } from 'react';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import {
   SidebarProvider,
   Sidebar,
@@ -23,7 +24,7 @@ import { initializePlayerQuests } from '@/lib/quest-utils';
 import { checkAndCompleteQuests as checkAndCompleteQuestsAction, type CompletedQuestInfo } from '@/app/actions/quest-actions';
 import { advanceTurn as advanceTurnAction } from '@/app/actions/game-actions';
 import { deleteStructure as deleteStructureAction } from '@/app/actions/structure-actions';
-import { Menu, ShieldAlert, Trash2 } from 'lucide-react';
+import { Menu, ShieldAlert, Trash2, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -80,6 +81,7 @@ export default function RealmArchitectPage() {
         title: "Realm Lost!",
         description: gameState.currentEvent || "Your realm has crumbled.",
         variant: "destructive",
+        duration: 10000, // Longer duration for game over
       });
     }
     prevIsGameOverRef.current = gameState.isGameOver;
@@ -229,12 +231,20 @@ export default function RealmArchitectPage() {
             <AppIcon className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
           </div>
-           <SidebarTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu />
-              <span className="sr-only">Toggle Sidebar</span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/how-to-play" title="How to Play">
+                <HelpCircle />
+                <span className="sr-only">How to Play</span>
+              </Link>
             </Button>
-          </SidebarTrigger>
+            <SidebarTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu />
+                <span className="sr-only">Toggle Sidebar</span>
+              </Button>
+            </SidebarTrigger>
+          </div>
         </header>
         
         <div className="flex flex-1">
@@ -328,4 +338,3 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
-
