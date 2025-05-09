@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { checkAndCompleteQuests } from '@/app/actions/quest-actions';
 
 interface ConstructionMenuProps {
   gameState: GameState;
@@ -26,14 +27,12 @@ export function ConstructionMenu({ gameState, setGameState }: ConstructionMenuPr
     });
   };
 
-  // Simplified placement: adds to a list, no actual map interaction in this version
-  const handlePlaceBuilding = () => {
+  const handlePlaceBuilding = async () => {
     if (!gameState.selectedBuildingForConstruction) return;
 
     const buildingType = BUILDING_TYPES[gameState.selectedBuildingForConstruction];
     if (!buildingType) return;
 
-    // Check cost
     let canAfford = true;
     for (const [resource, amount] of Object.entries(buildingType.cost)) {
       if (gameState.resources[resource as keyof ResourceSet] < amount) {
@@ -52,17 +51,30 @@ export function ConstructionMenu({ gameState, setGameState }: ConstructionMenuPr
         id: `struct_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         typeId: buildingType.id,
       };
-
-      setGameState(prev => ({
-        ...prev,
+      
+      const intermediateState: GameState = {
+        ...gameState,
         resources: newResources,
-        structures: [...prev.structures, newStructure],
-        selectedBuildingForConstruction: null, // Clear selection after placement
-      }));
+        structures: [...gameState.structures, newStructure],
+        selectedBuildingForConstruction: null, // Reset selection
+      };
+      
+      const { updatedGameState, completedQuestsInfo } = await checkAndCompleteQuests(intermediateState);
+      
+      setGameState(updatedGameState);
+        
       toast({
         title: `${buildingType.name} Placed!`,
         description: `Resources deducted. Your realm grows.`,
       });
+
+      completedQuestsInfo.forEach(info => {
+        toast({
+          title: info.title,
+          description: info.message,
+        });
+      });
+
     } else {
       toast({
         title: "Cannot Afford Building",

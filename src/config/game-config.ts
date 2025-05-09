@@ -1,10 +1,10 @@
-import type { BuildingType } from '@/types/game';
-import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Sparkles, Hammer, Play, Globe, Axe } from 'lucide-react';
+import type { BuildingType, QuestDefinition, ResourceSet } from '@/types/game';
+import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Sparkles, Hammer, Play, Globe, Axe, Trophy, ListChecks, Target } from 'lucide-react';
 
 export const APP_TITLE = "Realm Architect";
 export const APP_ICON = Globe;
 
-export const INITIAL_RESOURCES = {
+export const INITIAL_RESOURCES: ResourceSet = {
   wood: 100,
   stone: 100,
   food: 50,
@@ -24,7 +24,7 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
   farm: {
     id: 'farm',
     name: 'Farm',
-    icon: Carrot, // Using Carrot as Wheat is not available
+    icon: Carrot, 
     description: 'Produces food for your realm.',
     cost: { wood: 30, stone: 10 },
     upkeep: {},
@@ -62,6 +62,7 @@ export const ACTION_ICONS = {
   Build: Hammer,
   NextTurn: Play,
   Resources: PackageIcon,
+  Quests: ListChecks,
 };
 
 export const TURN_EVENTS = [
@@ -73,3 +74,70 @@ export const TURN_EVENTS = [
   "A rare mineral vein was found, increasing stone and gold prospects.",
   "Improved logging techniques have slightly boosted wood output this turn.",
 ];
+
+export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
+  firstShelter: {
+    id: 'firstShelter',
+    title: 'First Shelter',
+    description: 'Provide basic housing for your people.',
+    icon: Home,
+    criteria: [
+      { type: 'build', buildingId: 'hut', targetCount: 1, description: "Construct 1 Hut." }
+    ],
+    reward: { resources: { wood: 20, stone: 10 }, message: "Your first citizens have a place to call home!" },
+  },
+  woodStockpile: {
+    id: 'woodStockpile',
+    title: 'Wood Stockpiler',
+    description: 'Gather a significant amount of wood for future constructions.',
+    icon: Trees,
+    criteria: [
+      { type: 'resource_reach', resourceType: 'wood', targetAmount: 150, description: "Accumulate 150 Wood." }
+    ],
+    reward: { resources: { gold: 5 }, message: "Your wood reserves are growing impressively!" },
+  },
+  farmInitiative: {
+    id: 'farmInitiative',
+    title: 'Farming Initiative',
+    description: 'Secure a steady food supply by building a farm.',
+    icon: Carrot,
+    criteria: [
+      { type: 'build', buildingId: 'farm', targetCount: 1, description: "Construct 1 Farm." }
+    ],
+    reward: { resources: { food: 15 }, message: "The fields will soon yield their bounty." },
+  },
+  fiveTurnsStrong: {
+    id: 'fiveTurnsStrong',
+    title: 'Five Turns Strong',
+    description: 'Demonstrate your realm\'s resilience by surviving for 5 turns.',
+    icon: Target, // Using Target as generic achievement icon
+    isAchievement: true,
+    criteria: [
+      { type: 'turn_reach', targetTurn: 5, description: "Reach Turn 5." }
+    ],
+    reward: { message: "Your leadership has guided the realm through its early days!" },
+  },
+  miningOpener: {
+    id: 'miningOpener',
+    title: 'Mining Opener',
+    description: 'Establish a mine to extract valuable resources.',
+    icon: Pickaxe,
+    criteria: [
+      { type: 'build', buildingId: 'mine', targetCount: 1, description: "Construct 1 Mine." }
+    ],
+    reward: { resources: { stone: 20, gold: 5 }, message: "The earth yields its treasures!" },
+  },
+  resourceAbundance: {
+    id: 'resourceAbundance',
+    title: 'Resource Abundance',
+    description: 'Achieve a comfortable level of all basic resources.',
+    icon: PackageIcon,
+    isAchievement: true,
+    criteria: [
+      { type: 'resource_reach', resourceType: 'wood', targetAmount: 200, description: "Have 200 Wood." },
+      { type: 'resource_reach', resourceType: 'stone', targetAmount: 200, description: "Have 200 Stone." },
+      { type: 'resource_reach', resourceType: 'food', targetAmount: 100, description: "Have 100 Food." },
+    ],
+    reward: { resources: { gold: 25 }, message: "Your realm is prospering with abundant resources!" },
+  }
+};

@@ -16,13 +16,17 @@ import { ResourceDisplay } from '@/components/game/resource-display';
 import { ConstructionMenu } from '@/components/game/construction-menu';
 import { WorldMapDisplay } from '@/components/game/world-map-display';
 import { GameActions } from '@/components/game/game-actions';
+import { QuestDisplay } from '@/components/game/quest-display';
 import type { GameState } from '@/types/game';
-import { INITIAL_RESOURCES, APP_TITLE, APP_ICON as AppIcon } from '@/config/game-config';
+import { INITIAL_RESOURCES, APP_TITLE, APP_ICON as AppIcon, QUEST_DEFINITIONS } from '@/config/game-config';
+import { initializePlayerQuests } from '@/lib/quest-utils';
 import { Menu } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function RealmArchitectPage() {
-  const [gameState, setGameState] = useState<GameState>({
+  const { toast } = useToast(); // Ensure toast is available for quest completion
+  const [gameState, setGameState] = useState<GameState>(() => ({
     worldDescription: "",
     generatedWorldMap: null,
     isGenerating: false,
@@ -31,16 +35,15 @@ export default function RealmArchitectPage() {
     currentTurn: 1,
     currentEvent: null,
     selectedBuildingForConstruction: null,
-  });
+    playerQuests: initializePlayerQuests(),
+  }));
 
-  // Effect to ensure components relying on window (like useIsMobile in Sidebar) render correctly
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   if (!isClient) {
-    // Render a loading state or null until client-side hydration is complete
     return (
       <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <AppIcon className="h-12 w-12 animate-pulse text-primary" />
@@ -79,6 +82,8 @@ export default function RealmArchitectPage() {
               <ConstructionMenu gameState={gameState} setGameState={setGameState} />
               <Separator />
               <GameActions gameState={gameState} setGameState={setGameState} />
+              <Separator />
+              <QuestDisplay playerQuests={gameState.playerQuests} allQuestDefinitions={QUEST_DEFINITIONS} />
             </SidebarContent>
           </Sidebar>
 

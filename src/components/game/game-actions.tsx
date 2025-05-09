@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { GameState, ResourceSet } from '@/types/game';
 import { BUILDING_TYPES, ACTION_ICONS, TURN_EVENTS } from '@/config/game-config';
 import { useToast } from '@/hooks/use-toast';
+import { checkAndCompleteQuests } from '@/app/actions/quest-actions';
 
 interface GameActionsProps {
   gameState: GameState;
@@ -15,49 +16,54 @@ interface GameActionsProps {
 export function GameActions({ gameState, setGameState }: GameActionsProps) {
   const { toast } = useToast();
 
-  const handleNextTurn = () => {
-    setGameState(prev => {
-      const newResources = { ...prev.resources };
-      let totalUpkeep: Partial<ResourceSet> = {};
-      let totalProduction: Partial<ResourceSet> = {};
+  const handleNextTurn = async () => {
+    let newResources = { ...gameState.resources };
+    let totalUpkeep: Partial<ResourceSet> = {};
+    let totalProduction: Partial<ResourceSet> = {};
 
-      // Calculate upkeep and production from structures
-      prev.structures.forEach(structure => {
-        const type = BUILDING_TYPES[structure.typeId];
-        if (type) {
-          Object.entries(type.upkeep).forEach(([res, val]) => {
-            totalUpkeep[res as keyof ResourceSet] = (totalUpkeep[res as keyof ResourceSet] || 0) + val;
-          });
-          Object.entries(type.production).forEach(([res, val]) => {
-            totalProduction[res as keyof ResourceSet] = (totalProduction[res as keyof ResourceSet] || 0) + val;
-          });
-        }
-      });
+    gameState.structures.forEach(structure => {
+      const type = BUILDING_TYPES[structure.typeId];
+      if (type) {
+        Object.entries(type.upkeep).forEach(([res, val]) => {
+          totalUpkeep[res as keyof ResourceSet] = (totalUpkeep[res as keyof ResourceSet] || 0) + val;
+        });
+        Object.entries(type.production).forEach(([res, val]) => {
+          totalProduction[res as keyof ResourceSet] = (totalProduction[res as keyof ResourceSet] || 0) + val;
+        });
+      }
+    });
+    
+    Object.entries(totalUpkeep).forEach(([res, val]) => {
+      newResources[res as keyof ResourceSet] = Math.max(0, newResources[res as keyof ResourceSet] - val);
+    });
+
+    Object.entries(totalProduction).forEach(([res, val]) => {
+      newResources[res as keyof ResourceSet] += val;
+    });
+
+    const randomEvent = TURN_EVENTS[Math.floor(Math.random() * TURN_EVENTS.length)];
+    
+    const intermediateState: GameState = {
+      ...gameState,
+      currentTurn: gameState.currentTurn + 1,
+      resources: newResources,
+      currentEvent: randomEvent,
+    };
+
+    const { updatedGameState, completedQuestsInfo } = await checkAndCompleteQuests(intermediateState);
+    
+    setGameState(updatedGameState);
       
-      // Apply upkeep
-      Object.entries(totalUpkeep).forEach(([res, val]) => {
-        newResources[res as keyof ResourceSet] = Math.max(0, newResources[res as keyof ResourceSet] - val);
-      });
+    toast({
+      title: `Turn ${updatedGameState.currentTurn}`,
+      description: updatedGameState.currentEvent, 
+    });
 
-      // Apply production
-      Object.entries(totalProduction).forEach(([res, val]) => {
-        newResources[res as keyof ResourceSet] += val;
-      });
-
-      // Random event
-      const randomEvent = TURN_EVENTS[Math.floor(Math.random() * TURN_EVENTS.length)];
-      
+    completedQuestsInfo.forEach(info => {
       toast({
-        title: `Turn ${prev.currentTurn + 1}`,
-        description: randomEvent,
+        title: info.title,
+        description: info.message,
       });
-
-      return {
-        ...prev,
-        currentTurn: prev.currentTurn + 1,
-        resources: newResources,
-        currentEvent: randomEvent,
-      };
     });
   };
 
