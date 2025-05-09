@@ -1,6 +1,6 @@
 
 import type { BuildingType, QuestDefinition, ResourceSet } from '@/types/game';
-import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Sparkles, Hammer, Play, Globe, Axe, Trophy, ListChecks, Target, Users, ShieldAlert, Skull } from 'lucide-react';
+import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Sparkles, Hammer, Play, Globe, Axe, Trophy, ListChecks, Target, Users, ShieldAlert, Skull, Warehouse, Castle, Banknote, Zap } from 'lucide-react';
 
 export const APP_TITLE = "Realm Architect";
 export const APP_ICON = Globe;
@@ -13,13 +13,17 @@ export const INITIAL_RESOURCES: ResourceSet = {
   population: 5,
 };
 
-export function getInitialGameState(): Omit<GameState, 'worldDescription' | 'generatedWorldMap' | 'isGenerating' | 'playerQuests' | 'selectedBuildingForConstruction' > & { playerQuests: PlayerQuest[] } { // A helper to reset core parts
+// Moved here because GameState type is needed
+import type { GameState, PlayerQuest } from '@/types/game'; 
+import { initializePlayerQuests } from '@/lib/quest-utils'; // This function must exist in quest-utils
+
+
+export function getInitialGameState(): Omit<GameState, 'worldDescription' | 'generatedWorldMap' | 'isGenerating' | 'playerQuests' | 'selectedBuildingForConstruction' > { 
   return {
     resources: { ...INITIAL_RESOURCES },
     structures: [],
     currentTurn: 1,
     currentEvent: null,
-    playerQuests: initializePlayerQuests(), // Will be defined in quest-utils
     isGameOver: false,
   };
 }
@@ -63,6 +67,24 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     upkeep: { food: 1 },
     production: { wood: 4 },
   },
+  quarry: {
+    id: 'quarry',
+    name: 'Quarry',
+    icon: Mountain, // Using Mountain as a placeholder, could be more specific
+    description: 'Efficiently extracts large amounts of stone.',
+    cost: { wood: 50, gold: 20 },
+    upkeep: { food: 2, gold: 1 },
+    production: { stone: 8 },
+  },
+  market: {
+    id: 'market',
+    name: 'Market',
+    icon: Banknote, 
+    description: 'Generates gold through trade and commerce.',
+    cost: { wood: 70, stone: 30 },
+    upkeep: { food: 1 }, // Staff need to eat
+    production: { gold: 5 },
+  },
 };
 
 export const RESOURCE_DETAILS = {
@@ -94,9 +116,14 @@ export const TURN_EVENTS = [
   "Whispers of unrest due to low gold reserves. Workers are grumbling.",
   "Sickness has spread, a few people are unable to work or have tragically passed.",
   "Tax collectors report slightly lower than expected gold income.",
+  "A wandering bard has composed a song about your growing realm!",
+  "Local wildlife seems more abundant this season.",
+  "A small fire broke out but was quickly extinguished. Minor wood losses.",
+  "Neighboring settlements speak of your realm with cautious optimism."
 ];
 
 export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
+  // --- Early Game Quests ---
   firstShelter: {
     id: 'firstShelter',
     title: 'First Shelter',
@@ -127,6 +154,16 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     ],
     reward: { resources: { gold: 5 }, message: "Your wood reserves are growing impressively!" },
   },
+  stoneFoundation: {
+    id: 'stoneFoundation',
+    title: 'Stone Foundation',
+    description: 'Gather a good amount of stone for sturdier buildings.',
+    icon: Mountain,
+    criteria: [
+      { type: 'resource_reach', resourceType: 'stone', targetAmount: 150, description: "Accumulate 150 Stone." }
+    ],
+    reward: { resources: { wood: 10 }, message: "You have a solid foundation for your realm!" },
+  },
   farmInitiative: {
     id: 'farmInitiative',
     title: 'Farming Initiative',
@@ -137,17 +174,6 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     ],
     reward: { resources: { food: 15 }, message: "The fields will soon yield their bounty." },
   },
-  fiveTurnsStrong: {
-    id: 'fiveTurnsStrong',
-    title: 'Five Turns Strong',
-    description: 'Demonstrate your realm\'s resilience by surviving for 5 turns.',
-    icon: Target,
-    isAchievement: true,
-    criteria: [
-      { type: 'turn_reach', targetTurn: 5, description: "Reach Turn 5." }
-    ],
-    reward: { message: "Your leadership has guided the realm through its early days!" },
-  },
   miningOpener: {
     id: 'miningOpener',
     title: 'Mining Opener',
@@ -157,6 +183,48 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
       { type: 'build', buildingId: 'mine', targetCount: 1, description: "Construct 1 Mine." }
     ],
     reward: { resources: { stone: 20, gold: 5 }, message: "The earth yields its treasures!" },
+  },
+  lumberjackLeader: {
+    id: 'lumberjackLeader',
+    title: 'Lumberjack Leader',
+    description: 'Build a Lumber Mill to improve wood production.',
+    icon: Axe,
+    criteria: [
+      { type: 'build', buildingId: 'lumberMill', targetCount: 1, description: "Construct 1 Lumber Mill." }
+    ],
+    reward: { resources: { wood: 25 }, message: "Efficient wood processing begins!" },
+  },
+
+  // --- Mid Game Quests & Achievements ---
+  sustainableFood: {
+    id: 'sustainableFood',
+    title: 'Sustainable Food Source',
+    description: 'Ensure your realm has a steady food income by building two farms.',
+    icon: Apple,
+    criteria: [
+      { type: 'build', buildingId: 'farm', targetCount: 2, description: "Construct 2 Farms." }
+    ],
+    reward: { resources: { food: 30, gold: 10 }, message: "Your people will not go hungry!" },
+  },
+  quarryMaster: {
+    id: 'quarryMaster',
+    title: 'Quarry Master',
+    description: 'Establish a Quarry for large-scale stone extraction.',
+    icon: Mountain, // Placeholder, could be more specific like a crane or minecart
+    criteria: [
+      { type: 'build', buildingId: 'quarry', targetCount: 1, description: "Construct 1 Quarry." }
+    ],
+    reward: { resources: { stone: 50 }, message: "Massive stone blocks are now available!" },
+  },
+  marketEconomy: {
+    id: 'marketEconomy',
+    title: 'Market Economy',
+    description: 'Build a Market to boost your gold income.',
+    icon: Banknote,
+    criteria: [
+      { type: 'build', buildingId: 'market', targetCount: 1, description: "Construct 1 Market." }
+    ],
+    reward: { resources: { gold: 30 }, message: "Commerce flourishes in your realm!" },
   },
   resourceAbundance: {
     id: 'resourceAbundance',
@@ -181,9 +249,84 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
       { type: 'population_reach', targetAmount: 25, description: "Reach a population of 25." }
     ],
     reward: { resources: { gold: 50 }, message: "Your realm is becoming a lively settlement!" },
-  }
-};
+  },
+  fiveTurnsStrong: {
+    id: 'fiveTurnsStrong',
+    title: 'Five Turns Strong',
+    description: 'Demonstrate your realm\'s resilience by surviving for 5 turns.',
+    icon: Target,
+    isAchievement: true,
+    criteria: [
+      { type: 'turn_reach', targetTurn: 5, description: "Reach Turn 5." }
+    ],
+    reward: { message: "Your leadership has guided the realm through its early days!" },
+  },
+  tenTurnVeteran: {
+    id: 'tenTurnVeteran',
+    title: 'Ten Turn Veteran',
+    description: 'Survive for 10 turns, proving your strategic prowess.',
+    icon: ShieldAlert, // More like a shield icon
+    isAchievement: true,
+    criteria: [
+      { type: 'turn_reach', targetTurn: 10, description: "Reach Turn 10." }
+    ],
+    reward: { resources: { gold: 20 }, message: "A seasoned ruler!" },
+  },
+  goldenHoard: {
+    id: 'goldenHoard',
+    title: 'Golden Hoard',
+    description: 'Amass a treasure of 100 gold.',
+    icon: Coins,
+    isAchievement: true,
+    criteria: [
+      { type: 'resource_reach', resourceType: 'gold', targetAmount: 100, description: "Accumulate 100 Gold." }
+    ],
+    reward: { message: "Your coffers are overflowing!" },
+  },
 
-// Moved here because GameState type is needed
-import type { GameState, PlayerQuest } from '@/types/game'; 
-import { initializePlayerQuests } from '@/lib/quest-utils'; // This function must exist in quest-utils
+  // --- Late Game / Advanced Achievements ---
+  industrialPowerhouse: {
+    id: 'industrialPowerhouse',
+    title: 'Industrial Powerhouse',
+    description: 'Have at least two of each production building (Farm, Mine, Lumber Mill, Quarry).',
+    icon: Zap, // Represents power/industry
+    isAchievement: true,
+    criteria: [
+      { type: 'build', buildingId: 'farm', targetCount: 2, description: "Build 2 Farms." },
+      { type: 'build', buildingId: 'mine', targetCount: 2, description: "Build 2 Mines." },
+      { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills." },
+      { type: 'build', buildingId: 'quarry', targetCount: 2, description: "Build 2 Quarries." },
+    ],
+    reward: { resources: { gold: 100 }, message: "Your realm's production capacity is unmatched!" },
+  },
+  metropolisBuilder: {
+    id: 'metropolisBuilder',
+    title: 'Metropolis Builder',
+    description: 'Reach a population of 50 citizens.',
+    icon: Castle, 
+    isAchievement: true,
+    criteria: [
+      { type: 'population_reach', targetAmount: 50, description: "Reach 50 citizens." }
+    ],
+    reward: { resources: { food: 50, gold: 50 }, message: "A true metropolis under your rule!" },
+  },
+   masterArchitect: {
+    id: 'masterArchitect',
+    title: 'Master Architect',
+    description: 'Construct a total of 10 buildings of any type.',
+    icon: Hammer,
+    isAchievement: true,
+    criteria: [
+      // This requires a new criterion type or logic to count total structures.
+      // For now, let's represent it with a placeholder. A custom criterion would be better.
+      // Assuming we add a 'total_structures_reach' criterion type.
+      // { type: 'total_structures_reach', targetCount: 10, description: "Have 10 buildings constructed."}
+      // For simplicity without adding new criterion type for now:
+      { type: 'build', buildingId: 'hut', targetCount: 3, description: "Build 3 Huts (part of 10 total)." }, // Example placeholder
+      { type: 'build', buildingId: 'farm', targetCount: 3, description: "Build 3 Farms (part of 10 total)." }, // Example placeholder
+      { type: 'build', buildingId: 'mine', targetCount: 2, description: "Build 2 Mines (part of 10 total)." }, // Example placeholder
+      { type: 'build', buildingId: 'lumberMill', targetCount: 2, description: "Build 2 Lumber Mills (part of 10 total)." }, // Example placeholder
+    ],
+    reward: { message: "Your architectural vision shapes the land!" },
+  },
+};
