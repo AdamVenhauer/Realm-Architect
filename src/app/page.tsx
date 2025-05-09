@@ -2,7 +2,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -74,7 +74,7 @@ export default function RealmArchitectPage() {
   }, [gameJustReset, toast]);
 
   // Effect for Game Over Toast
-  const prevIsGameOverRef = React.useRef<boolean>(gameState.isGameOver);
+  const prevIsGameOverRef = useRef<boolean>(gameState.isGameOver);
   useEffect(() => {
     if (gameState.isGameOver && !prevIsGameOverRef.current) {
       // Game just transitioned to over
@@ -88,38 +88,53 @@ export default function RealmArchitectPage() {
   }, [gameState.isGameOver, gameState.currentEvent, toast]);
 
 
-  const updateGameStateAndCheckQuests = useCallback(async (newStateOrUpdater: GameStateType | ((prevState: GameStateType) => GameStateType)) => {
-    setGameState(prevState => {
-      const resolvedNewState = typeof newStateOrUpdater === 'function'
-        ? newStateOrUpdater(prevState)
-        : newStateOrUpdater;
+  const updateGameStateAndCheckQuests = useCallback(async (
+    newStateOrUpdater: GameStateType | ((prevState: GameStateType) => GameStateType)
+  ) => {
+    // Step 1: Apply the initial state change and get the resulting state.
+    let stateAfterInitialUpdate: GameStateType;
 
-      // Game over toast is now handled by useEffect
-      if (resolvedNewState.isGameOver && !prevState.isGameOver) {
-        return resolvedNewState; 
-      }
-      
-      if (!resolvedNewState.isGameOver) {
-        checkAndCompleteQuestsAction(resolvedNewState).then(({ updatedGameState: stateAfterQuests, completedQuestsInfo }) => {
-          setGameState(stateAfterQuests); 
-          completedQuestsInfo.forEach(info => {
-            toast({
-              title: info.title,
-              description: info.message,
-            });
+    if (typeof newStateOrUpdater === 'function') {
+      // If it's an updater function, apply it and await the new state.
+      // This ensures we operate on the state that will be rendered.
+      stateAfterInitialUpdate = await new Promise<GameStateType>(resolve => {
+        setGameState(currentActualState => {
+          const updatedState = newStateOrUpdater(currentActualState);
+          resolve(updatedState); 
+          return updatedState;   
+        });
+      });
+    } else {
+      // If it's a direct state object, set it.
+      setGameState(newStateOrUpdater);
+      stateAfterInitialUpdate = newStateOrUpdater;
+    }
+
+    // Step 2: If the game is not over after the initial update, check quests.
+    if (!stateAfterInitialUpdate.isGameOver) {
+      try {
+        const { updatedGameState: stateAfterQuests, completedQuestsInfo } = await checkAndCompleteQuestsAction(stateAfterInitialUpdate);
+        
+        // Step 3: Apply the state changes from quest completion.
+        setGameState(stateAfterQuests); 
+        
+        completedQuestsInfo.forEach(info => {
+          toast({
+            title: info.title,
+            description: info.message,
           });
-        }).catch(error => {
-           console.error("Error checking quests:", error);
-           toast({
-                title: "Error During Quest Check",
-                description: "Could not process quest updates.",
-                variant: "destructive",
-            });
+        });
+      } catch (error) {
+        console.error("Error checking quests:", error);
+        toast({
+          title: "Error During Quest Check",
+          description: "Could not process quest updates.",
+          variant: "destructive",
         });
       }
-      return resolvedNewState; 
-    });
-  }, [toast]); 
+    }
+    // If game was over from stateAfterInitialUpdate, the game over toast is handled by the useEffect.
+  }, [toast]); // setGameState & checkAndCompleteQuestsAction are stable, toast is from hook.
 
 
   const handleAdvanceTurn = async () => {
@@ -132,6 +147,8 @@ export default function RealmArchitectPage() {
           description: nextState.currentEvent,
         });
       }
+      // updateGameStateAndCheckQuests will handle setting the state from advanceTurnAction
+      // and then subsequently checking quests.
       await updateGameStateAndCheckQuests(nextState); 
     } catch (error) {
       console.error("Error advancing turn:", error);
@@ -147,6 +164,7 @@ export default function RealmArchitectPage() {
     if (gameState.isGameOver) return;
     try {
       const nextState = await deleteStructureAction(gameState, structureId);
+      // Pass the state after deletion to updateGameStateAndCheckQuests
       await updateGameStateAndCheckQuests(nextState); 
       if (!nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
         toast({
@@ -245,7 +263,7 @@ export default function RealmArchitectPage() {
                 updateGameStateAndCheckQuests={updateGameStateAndCheckQuests}
               />
               <Separator />
-              <QuestDisplay playerQuests={gameState.playerQuests} allQuestDefinitions={QUEST_DEFINITIONS} />
+               <QuestDisplay playerQuests={gameState.playerQuests} allQuestDefinitions={QUEST_DEFINITIONS} />
               <Separator />
               <GameActions 
                 gameState={gameState} 
