@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -76,7 +75,7 @@ export default function RealmArchitectPage() {
   // Effect for Game Over Toast
   const prevIsGameOverRef = useRef<boolean>(gameState.isGameOver);
   useEffect(() => {
-    if (gameState.isGameOver && !prevIsGameOverRef.current) {
+    if (isClient && gameState.isGameOver && !prevIsGameOverRef.current) {
       // Game just transitioned to over
       toast({
         title: "Realm Lost!",
@@ -86,7 +85,7 @@ export default function RealmArchitectPage() {
       });
     }
     prevIsGameOverRef.current = gameState.isGameOver;
-  }, [gameState.isGameOver, gameState.currentEvent, toast]);
+  }, [isClient, gameState.isGameOver, gameState.currentEvent, toast]);
 
 
   const updateGameStateAndCheckQuests = useCallback(async (
@@ -107,7 +106,7 @@ export default function RealmArchitectPage() {
       stateAfterInitialUpdate = newStateOrUpdater;
     }
 
-    if (!stateAfterInitialUpdate.isGameOver) {
+    if (isClient && !stateAfterInitialUpdate.isGameOver) {
       try {
         const { updatedGameState: stateAfterQuests, completedQuestsInfo } = await checkAndCompleteQuestsAction(stateAfterInitialUpdate);
         
@@ -128,14 +127,14 @@ export default function RealmArchitectPage() {
         });
       }
     }
-  }, [toast]); 
+  }, [toast, isClient]); 
 
 
   const handleAdvanceTurn = async () => {
     if (gameState.isGameOver) return;
     try {
       const nextState = await advanceTurnAction(gameState);
-      if (nextState.currentEvent && !nextState.isGameOver) { 
+      if (isClient && nextState.currentEvent && !nextState.isGameOver) { 
         toast({
           title: `Turn ${nextState.currentTurn}`,
           description: nextState.currentEvent,
@@ -144,11 +143,13 @@ export default function RealmArchitectPage() {
       await updateGameStateAndCheckQuests(nextState); 
     } catch (error) {
       console.error("Error advancing turn:", error);
-      toast({
-        title: "Error Advancing Turn",
-        description: error instanceof Error ? error.message : "An unknown error occurred.",
-        variant: "destructive",
-      });
+      if (isClient) {
+        toast({
+          title: "Error Advancing Turn",
+          description: error instanceof Error ? error.message : "An unknown error occurred.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -157,7 +158,7 @@ export default function RealmArchitectPage() {
     try {
       const nextState = await deleteStructureAction(gameState, structureToDeleteId);
       await updateGameStateAndCheckQuests(nextState); 
-      if (!nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
+      if (isClient && !nextState.isGameOver && nextState.currentEvent?.includes("demolished")) { 
         toast({
             title: "Structure Demolished",
             description: "Resources partially recovered.",
@@ -165,11 +166,13 @@ export default function RealmArchitectPage() {
       }
     } catch (error) {
       console.error("Error deleting structure:", error);
-      toast({
-        title: "Error Demolishing Structure",
-        description: error instanceof Error ? error.message : "An unknown error occurred.",
-        variant: "destructive",
-      });
+      if (isClient) {
+        toast({
+          title: "Error Demolishing Structure",
+          description: error instanceof Error ? error.message : "An unknown error occurred.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setStructureToDeleteId(null); // Close dialog
     }
@@ -178,7 +181,9 @@ export default function RealmArchitectPage() {
   const resetGame = () => {
     const initial = getInitialGameState();
     setGameState(initial); 
-    sessionStorage.removeItem('initialRealmToastShown'); 
+    if (isClient) {
+      sessionStorage.removeItem('initialRealmToastShown'); 
+    }
     setGameJustReset(true); 
   };
 
@@ -226,24 +231,26 @@ export default function RealmArchitectPage() {
   return (
     <SidebarProvider defaultOpen>
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-background to-muted/50 dark:from-background dark:to-muted/30">
-        <header className="sticky top-0 z-50 flex items-center justify-between p-4 border-b bg-card/80 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <AppIcon className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggleButton />
-            <Button variant="ghost" asChild className="h-8 px-3">
-              <Link href="/how-to-play">
-                How to play?
-              </Link>
-            </Button>
-            <SidebarTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
-                <Menu />
-                <span className="sr-only">Toggle Sidebar</span>
+        <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-sm">
+          <div className="container mx-auto flex items-center justify-between p-4">
+            <div className="flex items-center gap-2">
+              <AppIcon className="h-8 w-8 text-primary" />
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeToggleButton />
+              <Button variant="ghost" asChild className="h-8 px-3">
+                <Link href="/how-to-play">
+                  How to play?
+                </Link>
               </Button>
-            </SidebarTrigger>
+              <SidebarTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
+                  <Menu />
+                  <span className="sr-only">Toggle Sidebar</span>
+                </Button>
+              </SidebarTrigger>
+            </div>
           </div>
         </header>
         
