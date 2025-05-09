@@ -158,6 +158,16 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
       }
     }
   }
+
+  // 7. Recurring Gift Event (every 10 turns)
+  if (!newState.isGameOver && newState.currentTurn % 10 === 0) {
+    const giftableResources: (keyof Omit<ResourceSet, 'population'>)[] = ['wood', 'stone', 'food', 'gold'];
+    const randomResource = giftableResources[Math.floor(Math.random() * giftableResources.length)];
+    const randomAmount = Math.floor(Math.random() * 10) + 1; // 1 to 10
+
+    newState.resources[randomResource] = (newState.resources[randomResource] || 0) + randomAmount;
+    eventMessages.push(`A loyal subject has gifted you ${randomAmount} ${randomResource}! Your benevolence is recognized.`);
+  }
   
   // If game became over due to an event, set the event message and return
   if (newState.isGameOver) {
@@ -169,3 +179,4 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
 
   return newState;
 }
+
