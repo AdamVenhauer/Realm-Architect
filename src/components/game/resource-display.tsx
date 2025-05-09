@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ResourceSet } from '@/types/game';
@@ -8,11 +7,12 @@ import { cn } from '@/lib/utils';
 
 interface ResourceDisplayProps {
   resources: ResourceSet;
+  className?: string;
 }
 
-export function ResourceDisplay({ resources }: ResourceDisplayProps) {
+export function ResourceDisplay({ resources, className }: ResourceDisplayProps) {
   return (
-    <Card className="shadow-md mb-4">
+    <Card className={cn("shadow-md mb-4", className)}>
       <CardHeader>
         <CardTitle className="flex items-center text-lg gap-2">
           <ACTION_ICONS.Resources className="h-5 w-5 text-accent" />

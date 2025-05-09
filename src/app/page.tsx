@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -239,7 +238,7 @@ export default function RealmArchitectPage() {
 
   return (
     <SidebarProvider defaultOpen>
-      <div className="flex flex-col min-h-screen bg-gradient-to-br from-background to-muted/50 dark:from-background dark:to-muted/30">
+      <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-background to-muted/50 dark:from-background dark:to-muted/30">
         <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
@@ -263,7 +262,7 @@ export default function RealmArchitectPage() {
           </div>
         </header>
         
-        <div className="flex flex-1">
+        <div className="flex flex-1 w-full">
           <Sidebar
             variant="sidebar"
             collapsible="icon"
@@ -288,9 +287,9 @@ export default function RealmArchitectPage() {
           </Sidebar>
 
           <SidebarInset className="flex-1 p-4 md:p-6">
-            <main className="space-y-6">
-              <ResourceDisplay resources={gameState.resources} />
-               <Card className="shadow-lg">
+            <main className="w-full flex-1 overflow-y-auto space-y-6">
+              <ResourceDisplay resources={gameState.resources} className="w-full" />
+               <Card className="shadow-lg w-full">
                 <CardHeader>
                   <CardTitle>Realm Status</CardTitle>
                   <CardDescription>A brief overview of your current realm.</CardDescription>
@@ -354,5 +353,3 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
-
-    
