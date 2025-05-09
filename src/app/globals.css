@@ -8,73 +8,99 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --background: 45 20% 95%; /* Light Beige */
+    --foreground: 30 25% 25%; /* Dark Brown */
+
+    --muted: 40 15% 88%; /* Light Grayish Beige */
+    --muted-foreground: 40 10% 40%; /* Medium Brown-Gray */
+
+    --popover: 45 25% 98%; /* Off-White Beige */
+    --popover-foreground: 30 25% 25%; /* Dark Brown */
+
+    --card: 45 25% 98%; /* Off-White Beige */
+    --card-foreground: 30 25% 25%; /* Dark Brown */
+
+    --border: 45 15% 85%; /* Soft Beige-Gray */
+    --input: 45 15% 85%; /* Soft Beige-Gray */
+
+    --primary: 80 30% 40%; /* Muted Green */
+    --primary-foreground: 80 20% 95%; /* Very Light Greenish White */
+
+    --secondary: 50 40% 75%; /* Soft Earthy Brown/Tan */
+    --secondary-foreground: 50 20% 25%; /* Dark Brown for Secondary */
+    
+    --accent: 35 70% 50%; /* Gold */
+    --accent-foreground: 35 70% 15%; /* Dark Brown for Accent Text */
+
+    --destructive: 0 70% 50%; /* Standard Destructive Red */
+    --destructive-foreground: 0 0% 100%; /* White */
+
+    --ring: 35 70% 50%; /* Gold for focus rings */
+
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Sidebar specific variables, adjusted for the theme */
+    --sidebar-background: 45 20% 92%; /* Slightly darker beige for sidebar */
+    --sidebar-foreground: 30 25% 30%; /* Dark brown for sidebar text */
+    --sidebar-primary: 80 30% 35%; /* Darker muted green for sidebar primary elements */
+    --sidebar-primary-foreground: 80 20% 90%; /* Light greenish white for sidebar primary text */
+    --sidebar-accent: 35 65% 55%; /* Gold for sidebar accents */
+    --sidebar-accent-foreground: 35 70% 10%; /* Dark brown for sidebar accent text */
+    --sidebar-border: 45 15% 80%; /* Softer beige-gray for sidebar borders */
+    --sidebar-ring: 35 70% 50%; /* Gold for sidebar focus rings */
+    
+    --chart-1: 80 40% 50%; /* Green */
+    --chart-2: 35 60% 55%; /* Gold/Orange */
+    --chart-3: 40 30% 50%; /* Brown */
+    --chart-4: 120 30% 60%; /* Lighter Green */
+    --chart-5: 25 50% 50%; /* Earthy Orange */
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 30 10% 10%; /* Dark Brownish Gray */
+    --foreground: 45 20% 85%; /* Light Beige */
+
+    --muted: 30 8% 20%; /* Dark Gray */
+    --muted-foreground: 45 15% 65%; /* Medium Light Beige-Gray */
+
+    --popover: 30 10% 15%; /* Darker Brownish Gray */
+    --popover-foreground: 45 20% 85%; /* Light Beige */
+
+    --card: 30 10% 15%; /* Darker Brownish Gray */
+    --card-foreground: 45 20% 85%; /* Light Beige */
+
+    --border: 30 8% 25%; /* Medium Dark Gray */
+    --input: 30 8% 25%; /* Medium Dark Gray */
+
+    --primary: 80 25% 30%; /* Dark Muted Green */
+    --primary-foreground: 80 15% 80%; /* Light Muted Greenish White */
+
+    --secondary: 30 10% 25%; /* Darker Gray for Secondary */
+    --secondary-foreground: 45 15% 75%; /* Medium Light Beige */
+    
+    --accent: 35 60% 45%; /* Muted Gold/Bronze */
+    --accent-foreground: 35 60% 90%; /* Light Gold/Beige for Accent Text */
+
+    --destructive: 0 60% 45%; /* Muted Destructive Red */
+    --destructive-foreground: 0 0% 95%; /* Off-White */
+
+    --ring: 35 60% 45%; /* Muted Gold for focus rings */
+
+    /* Sidebar specific variables for dark mode */
+    --sidebar-background: 30 10% 12%; /* Very dark brownish gray for sidebar */
+    --sidebar-foreground: 45 20% 80%; /* Light beige for sidebar text */
+    --sidebar-primary: 80 25% 35%; /* Darker muted green for sidebar primary elements */
+    --sidebar-primary-foreground: 80 15% 85%; /* Light muted greenish white for sidebar primary text */
+    --sidebar-accent: 35 55% 50%; /* Muted gold for sidebar accents */
+    --sidebar-accent-foreground: 35 60% 85%; /* Light gold/beige for sidebar accent text */
+    --sidebar-border: 30 8% 22%; /* Dark gray for sidebar borders */
+    --sidebar-ring: 35 60% 45%; /* Muted gold for sidebar focus rings */
+
+    --chart-1: 80 30% 40%;
+    --chart-2: 35 50% 45%;
+    --chart-3: 40 20% 40%;
+    --chart-4: 120 25% 50%;
+    --chart-5: 25 40% 40%;
   }
 }
 
