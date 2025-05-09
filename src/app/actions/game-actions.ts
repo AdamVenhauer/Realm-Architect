@@ -22,7 +22,8 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
 
   // 1. Calculate Upkeep and Production from structures
   let totalUpkeep: Partial<Omit<ResourceSet, 'population'>> = {}; 
-  let totalProduction: Partial<Omit<ResourceSet, 'population'>> = {};
+  let totalProduction: Partial<Omit<ResourceSet, 'population'>> = { wood: 0, stone: 0, food: 0, gold: 0 };
+
 
   newState.structures.forEach(structure => {
     const type = BUILDING_TYPES[structure.typeId];
@@ -49,6 +50,19 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
       }
     }
   });
+
+  // Apply Library bonus
+  const numberOfLibraries = newState.structures.filter(s => s.typeId === 'library').length;
+  if (numberOfLibraries > 0 && !workStoppage) { // Library bonus doesn't apply during work stoppage
+    const libraryBonus = numberOfLibraries * 1; // +1 to wood, stone, food per library
+    totalProduction.wood = (totalProduction.wood || 0) + libraryBonus;
+    totalProduction.stone = (totalProduction.stone || 0) + libraryBonus;
+    totalProduction.food = (totalProduction.food || 0) + libraryBonus;
+    if (libraryBonus > 0) {
+        eventMessages.push(`Libraries contribute +${libraryBonus} to wood, stone, and food production.`);
+    }
+  }
+
 
   // Apply collected upkeep
   for (const [resource, amount] of Object.entries(totalUpkeep)) {
@@ -77,12 +91,14 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
     }
     newResources.food = 0; 
   } else if (newResources.food === 0 && newPopulation > 0) {
-    const peopleLost = Math.min(newPopulation, 1);
+    // If food becomes exactly 0 *after* consumption, and population is > 0, one person starves.
+    const peopleLost = Math.min(newPopulation, 1); // Lose at least 1 if pop > 0 and food is 0
     if (peopleLost > 0) {
         newPopulation = Math.max(0, newPopulation - peopleLost);
         eventMessages.push(`${peopleLost} citizen starved due to critical food shortage!`);
     }
   }
+
 
   newState.resources = { ...newResources, population: newPopulation };
 

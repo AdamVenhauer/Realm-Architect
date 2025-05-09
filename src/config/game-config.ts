@@ -96,16 +96,16 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     id: 'library',
     name: 'Library',
     icon: Library,
-    description: 'Unlocks advanced knowledge and passive bonuses. (Future feature)',
+    description: 'Fosters advanced knowledge, passively boosting resource production (wood, stone, food by +1 per library).',
     cost: { wood: 100, stone: 150, gold: 50 },
     upkeep: { gold: 5 },
-    production: {}, 
+    production: {}, // Effect handled globally in advanceTurn
   },
   barracks: {
     id: 'barracks',
     name: 'Barracks',
     icon: ShieldAlert,
-    description: 'Trains soldiers to defend your realm. (Future feature)',
+    description: 'Trains soldiers to defend your realm. Consumes resources for upkeep. (Full defense mechanics are a future feature).',
     cost: { wood: 80, stone: 100, gold: 30 },
     upkeep: { food: 3, gold: 3 },
     production: {},
@@ -114,10 +114,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
     id: 'warehouse',
     name: 'Warehouse',
     icon: Warehouse,
-    description: 'Increases storage capacity for all resources. (Future passive bonus)',
+    description: 'Improves storage and logistics, reducing losses from certain negative events (e.g., pests, fires).',
     cost: { wood: 120, stone: 80 },
     upkeep: { gold: 2 },
-    production: {}, 
+    production: {}, // Effect handled in specific event logic
   },
 };
 
@@ -212,9 +212,19 @@ export const TURN_EVENTS: GameEvent[] = [
   {
     message: "A small fire broke out in a storage shed but was quickly extinguished by vigilant citizens. Some wood was lost.",
     effect: (currentState) => {
+      const numWarehouses = currentState.structures.filter(s => s.typeId === 'warehouse').length;
+      let woodLoss = 0;
       if (currentState.resources.wood > 20) {
-        const woodLoss = Math.floor(Math.random() * 10) + 5;
-        return { resourceDelta: { wood: -woodLoss }, additionalMessage: `Lost ${woodLoss} wood in a small fire.` };
+        woodLoss = Math.floor(Math.random() * 10) + 5;
+        const mitigationPerWarehouse = 3; // Each warehouse mitigates 3 wood loss
+        const actualMitigation = numWarehouses * mitigationPerWarehouse;
+        woodLoss = Math.max(0, woodLoss - actualMitigation);
+        
+        let mitigationMessage = "";
+        if (numWarehouses > 0 && actualMitigation > 0) {
+            mitigationMessage = ` (Mitigated by ${Math.min(actualMitigation, (Math.floor(Math.random() * 10) + 5))} thanks to Warehouses)`;
+        }
+        return { resourceDelta: { wood: -woodLoss }, additionalMessage: `Lost ${woodLoss} wood in a small fire.${mitigationMessage}` };
       }
       return { additionalMessage: "A small fire was quickly put out with minimal losses."};
     }
@@ -234,9 +244,20 @@ export const TURN_EVENTS: GameEvent[] = [
   {
     message: "Pests have infested some of the food stores!",
     effect: (currentState) => {
+        const numWarehouses = currentState.structures.filter(s => s.typeId === 'warehouse').length;
+        let foodLoss = 0;
         if (currentState.resources.food > 20) {
-            const foodLoss = Math.max(5, Math.floor(currentState.resources.food * 0.1));
-            return { resourceDelta: { food: -foodLoss}, additionalMessage: `Pests destroyed ${foodLoss} food!`};
+            foodLoss = Math.max(5, Math.floor(currentState.resources.food * 0.1));
+            const mitigationPerWarehouse = 3; // Each warehouse mitigates 3 food loss
+            const actualMitigation = numWarehouses * mitigationPerWarehouse;
+            foodLoss = Math.max(0, foodLoss - actualMitigation);
+            
+            let mitigationMessage = "";
+            if (numWarehouses > 0 && actualMitigation > 0) {
+                 // Make sure reported mitigation isn't more than original potential loss before mitigation
+                mitigationMessage = ` (Mitigated by ${Math.min(actualMitigation, Math.max(5, Math.floor(currentState.resources.food * 0.1)))} thanks to Warehouses)`;
+            }
+            return { resourceDelta: { food: -foodLoss}, additionalMessage: `Pests destroyed ${foodLoss} food!${mitigationMessage}`};
         }
         return { additionalMessage: "Pests were found, but thankfully food stores were low and losses minimal."};
     }
@@ -506,7 +527,7 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     id: 'resourceHoarder',
     title: 'Resource Hoarder',
     description: 'Accumulate 500 of Wood, Stone, and Food.',
-    icon: Warehouse,
+    icon: Warehouse, // Changed icon to Warehouse as it's fitting
     isAchievement: true,
     criteria: [
       { type: 'resource_reach', resourceType: 'wood', targetAmount: 500, description: "Accumulate 500 Wood." },
@@ -516,4 +537,5 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
     reward: { message: "Your storehouses are overflowing beyond measure!"}
   }
 };
+
 
