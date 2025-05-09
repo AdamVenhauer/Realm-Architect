@@ -4,8 +4,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { GameState, ResourceSet } from '@/types/game';
-import { BUILDING_TYPES, ACTION_ICONS } from '@/config/game-config';
-import { TURN_EVENTS } from '@/types/game';
+import { BUILDING_TYPES, ACTION_ICONS, TURN_EVENTS } from '@/config/game-config';
 import { useToast } from '@/hooks/use-toast';
 
 interface GameActionsProps {

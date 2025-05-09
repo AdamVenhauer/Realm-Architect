@@ -17,8 +17,9 @@ import { ConstructionMenu } from '@/components/game/construction-menu';
 import { WorldMapDisplay } from '@/components/game/world-map-display';
 import { GameActions } from '@/components/game/game-actions';
 import type { GameState } from '@/types/game';
-import { INITIAL_RESOURCES } from '@/types/game';
-import { APP_TITLE, APP_ICON as AppIcon } from '@/config/game-config';
+import { INITIAL_RESOURCES, APP_TITLE, APP_ICON as AppIcon } from '@/config/game-config';
+import { Menu } from 'lucide-react';
+
 
 export default function RealmArchitectPage() {
   const [gameState, setGameState] = useState<GameState>({
@@ -56,9 +57,9 @@ export default function RealmArchitectPage() {
             <AppIcon className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
           </div>
-          <SidebarTrigger asChild>
+           <SidebarTrigger asChild>
             <Button variant="ghost" size="icon" className="md:hidden">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+              <Menu />
             </Button>
           </SidebarTrigger>
         </header>

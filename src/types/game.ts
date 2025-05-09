@@ -33,19 +33,3 @@ export interface GameState {
   currentEvent: string | null;
   selectedBuildingForConstruction: string | null; // typeId of building
 }
-
-export const INITIAL_RESOURCES: ResourceSet = {
-  wood: 100,
-  stone: 100,
-  food: 50,
-  gold: 20,
-};
-
-export const TURN_EVENTS = [
-  "A gentle breeze rustles the leaves, a peaceful day.",
-  "Traders report a new route opening nearby, promising future opportunities.",
-  "A meteor shower was spotted last night! Some say it's a good omen.",
-  "Old ruins were discovered by scouts, hinting at ancient secrets.",
-  "Bountiful harvest! Food production is up this season.",
-  "A rare mineral vein was found, increasing stone and gold prospects.",
-];
