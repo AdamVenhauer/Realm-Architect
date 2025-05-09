@@ -20,12 +20,13 @@ import { QuestDisplay } from '@/components/game/quest-display';
 import type { GameState } from '@/types/game';
 import { INITIAL_RESOURCES, APP_TITLE, APP_ICON as AppIcon, QUEST_DEFINITIONS } from '@/config/game-config';
 import { initializePlayerQuests } from '@/lib/quest-utils';
+import { checkAndCompleteQuests } from '@/app/actions/quest-actions';
 import { Menu } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 
 export default function RealmArchitectPage() {
-  const { toast } = useToast(); // Ensure toast is available for quest completion
+  const { toast } = useToast();
   const [gameState, setGameState] = useState<GameState>(() => ({
     worldDescription: "",
     generatedWorldMap: null,
@@ -43,6 +44,19 @@ export default function RealmArchitectPage() {
     setIsClient(true);
   }, []);
 
+  const updateGameStateAndCheckQuests = async (newState: GameState) => {
+    // Directly call the server action
+    const { updatedGameState, completedQuestsInfo } = await checkAndCompleteQuests(newState);
+    setGameState(updatedGameState);
+    completedQuestsInfo.forEach(info => {
+      toast({
+        title: info.title,
+        description: info.message,
+      });
+    });
+  };
+
+
   if (!isClient) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
@@ -51,6 +65,7 @@ export default function RealmArchitectPage() {
       </div>
     );
   }
+
 
   return (
     <SidebarProvider defaultOpen>
@@ -77,13 +92,13 @@ export default function RealmArchitectPage() {
               <h2 className="text-lg font-semibold text-sidebar-foreground">Controls</h2>
             </SidebarHeader>
             <SidebarContent className="p-2 space-y-4">
-              <WorldGenerationForm setGameState={setGameState} isGenerating={gameState.isGenerating} />
+              <WorldGenerationForm gameState={gameState} setGameState={setGameState} isGenerating={gameState.isGenerating} />
               <Separator />
-              <ConstructionMenu gameState={gameState} setGameState={setGameState} />
-              <Separator />
-              <GameActions gameState={gameState} setGameState={setGameState} />
+              <ConstructionMenu gameState={gameState} updateGameStateAndCheckQuests={updateGameStateAndCheckQuests} />
               <Separator />
               <QuestDisplay playerQuests={gameState.playerQuests} allQuestDefinitions={QUEST_DEFINITIONS} />
+              <Separator />
+              <GameActions gameState={gameState} updateGameStateAndCheckQuests={updateGameStateAndCheckQuests} />
             </SidebarContent>
           </Sidebar>
 
