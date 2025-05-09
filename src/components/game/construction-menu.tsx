@@ -9,17 +9,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { checkAndCompleteQuests } from '@/app/actions/quest-actions';
+// No longer needed here: import { checkAndCompleteQuests as checkAndCompleteQuestsAction } from '@/app/actions/quest-actions';
 
 interface ConstructionMenuProps {
   gameState: GameState;
-  setGameState: Dispatch<SetStateAction<GameState>>;
+  setGameState: Dispatch<SetStateAction<GameState>>; // For direct, simple state updates
+  updateGameStateAndCheckQuests: (newStateOrUpdater: GameState | ((prevState: GameState) => GameState)) => Promise<void>; // For updates that trigger game logic and quests
 }
 
-export function ConstructionMenu({ gameState, setGameState }: ConstructionMenuProps) {
+export function ConstructionMenu({ gameState, setGameState, updateGameStateAndCheckQuests }: ConstructionMenuProps) {
   const { toast } = useToast();
 
   const handleSelectBuilding = (buildingId: string) => {
+    // Use the direct setGameState for this simple UI update
     setGameState(prev => ({ ...prev, selectedBuildingForConstruction: buildingId }));
     toast({
       title: `${BUILDING_TYPES[buildingId].name} Selected`,
@@ -42,38 +44,35 @@ export function ConstructionMenu({ gameState, setGameState }: ConstructionMenuPr
     }
 
     if (canAfford) {
-      const newResources = { ...gameState.resources };
-      for (const [resource, amount] of Object.entries(buildingType.cost)) {
-        newResources[resource as keyof ResourceSet] -= amount;
-      }
+      // This function will be an updater for updateGameStateAndCheckQuests
+      const updaterFunction = (prevGameState: GameState): GameState => {
+        const newResources = { ...prevGameState.resources };
+        for (const [resource, amount] of Object.entries(buildingType.cost)) {
+          newResources[resource as keyof ResourceSet] = (newResources[resource as keyof ResourceSet] || 0) - amount;
+        }
 
-      const newStructure = {
-        id: `struct_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-        typeId: buildingType.id,
+        const newStructure = {
+          id: `struct_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          typeId: buildingType.id,
+        };
+        
+        return {
+          ...prevGameState,
+          resources: newResources,
+          structures: [...prevGameState.structures, newStructure],
+          selectedBuildingForConstruction: null, // Reset selection
+        };
       };
       
-      const intermediateState: GameState = {
-        ...gameState,
-        resources: newResources,
-        structures: [...gameState.structures, newStructure],
-        selectedBuildingForConstruction: null, // Reset selection
-      };
-      
-      const { updatedGameState, completedQuestsInfo } = await checkAndCompleteQuests(intermediateState);
-      
-      setGameState(updatedGameState);
+      // Use the prop from parent to handle state update and quest checks
+      // This will internally call the server action with the new state derived from updaterFunction
+      await updateGameStateAndCheckQuests(updaterFunction); 
         
       toast({
         title: `${buildingType.name} Placed!`,
         description: `Resources deducted. Your realm grows.`,
       });
-
-      completedQuestsInfo.forEach(info => {
-        toast({
-          title: info.title,
-          description: info.message,
-        });
-      });
+      // Toasting for completedQuestsInfo is handled by the parent's updateGameStateAndCheckQuests
 
     } else {
       toast({

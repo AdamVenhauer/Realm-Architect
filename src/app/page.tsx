@@ -20,7 +20,8 @@ import { QuestDisplay } from '@/components/game/quest-display';
 import type { GameState } from '@/types/game';
 import { INITIAL_RESOURCES, APP_TITLE, APP_ICON as AppIcon, QUEST_DEFINITIONS } from '@/config/game-config';
 import { initializePlayerQuests } from '@/lib/quest-utils';
-import { checkAndCompleteQuests } from '@/app/actions/quest-actions';
+import { checkAndCompleteQuests as checkAndCompleteQuestsAction } from '@/app/actions/quest-actions'; // Renamed import
+import type { CompletedQuestInfo } from '@/app/actions/quest-actions'; // Import type if needed elsewhere
 import { Menu } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -44,10 +45,15 @@ export default function RealmArchitectPage() {
     setIsClient(true);
   }, []);
 
-  const updateGameStateAndCheckQuests = async (newState: GameState) => {
-    // Directly call the server action
-    const { updatedGameState, completedQuestsInfo } = await checkAndCompleteQuests(newState);
-    setGameState(updatedGameState);
+  const updateGameStateAndCheckQuests = async (newStateOrUpdater: GameState | ((prevState: GameState) => GameState)) => {
+    // Resolve the new state if a function is provided
+    // Important: Pass the *current actual game state* to the updater if it's a function
+    const resolvedNewState = typeof newStateOrUpdater === 'function'
+      ? newStateOrUpdater(gameState) 
+      : newStateOrUpdater;
+  
+    const { updatedGameState, completedQuestsInfo } = await checkAndCompleteQuestsAction(resolvedNewState);
+    setGameState(updatedGameState); // Update with the state returned from the server action
     completedQuestsInfo.forEach(info => {
       toast({
         title: info.title,
@@ -94,11 +100,18 @@ export default function RealmArchitectPage() {
             <SidebarContent className="p-2 space-y-4">
               <WorldGenerationForm gameState={gameState} setGameState={setGameState} isGenerating={gameState.isGenerating} />
               <Separator />
-              <ConstructionMenu gameState={gameState} updateGameStateAndCheckQuests={updateGameStateAndCheckQuests} />
+              <ConstructionMenu 
+                gameState={gameState} 
+                setGameState={setGameState} // Pass direct setter for UI updates
+                updateGameStateAndCheckQuests={updateGameStateAndCheckQuests} // Pass wrapper for game logic updates
+              />
               <Separator />
               <QuestDisplay playerQuests={gameState.playerQuests} allQuestDefinitions={QUEST_DEFINITIONS} />
               <Separator />
-              <GameActions gameState={gameState} updateGameStateAndCheckQuests={updateGameStateAndCheckQuests} />
+              <GameActions 
+                gameState={gameState} 
+                updateGameStateAndCheckQuests={updateGameStateAndCheckQuests} 
+              />
             </SidebarContent>
           </Sidebar>
 
