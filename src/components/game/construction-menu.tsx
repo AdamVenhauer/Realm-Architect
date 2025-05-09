@@ -2,7 +2,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
-import { useState } from 'react'; // Added import for useState
+import { useState } from 'react'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { GameState, ResourceSet } from '@/types/game';
@@ -23,11 +23,19 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
 
 
   const handleSelectBuilding = (buildingId: string) => {
-    setSelectedBuildingId(buildingId);
-    toast({
-      title: `${BUILDING_TYPES[buildingId].name} Selected`,
-      description: "Click 'Place Building' to confirm construction.",
-    });
+    if (selectedBuildingId === buildingId) {
+      setSelectedBuildingId(null); // Deselect if the same building is clicked
+      toast({
+        title: `${BUILDING_TYPES[buildingId].name} Deselected`,
+        description: "No building selected for construction.",
+      });
+    } else {
+      setSelectedBuildingId(buildingId);
+      toast({
+        title: `${BUILDING_TYPES[buildingId].name} Selected`,
+        description: "Click 'Place Building' to confirm construction.",
+      });
+    }
   };
 
   const handlePlaceBuilding = async () => {
@@ -65,6 +73,7 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
           ...prevGameState,
           resources: { ...newResources, population: newPopulation },
           structures: [...prevGameState.structures, newStructure],
+          selectedBuildingForConstruction: null, // Clear selection after placing
         };
       };
       
@@ -111,9 +120,9 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
                         size="sm"
                         variant={isSelected ? "default" : "outline"}
                         onClick={() => handleSelectBuilding(building.id)}
-                        disabled={!!selectedBuildingId && !isSelected}
+                        disabled={!!selectedBuildingId && !isSelected} // Disable other buttons if one is selected
                       >
-                        {isSelected ? "Selected" : "Select"}
+                        {isSelected ? "Deselect" : "Select"}
                       </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">{building.description}</p>
@@ -159,3 +168,4 @@ export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: C
     </Card>
   );
 }
+
