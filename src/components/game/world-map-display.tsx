@@ -7,7 +7,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import type { PlacedStructure } from '@/types/game';
 import { BUILDING_TYPES, ACTION_ICONS } from '@/config/game-config';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Globe } from 'lucide-react'; // Added Globe
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useState } from 'react';
+
 
 interface WorldMapDisplayProps {
   mapDescription: string | null;
@@ -18,6 +31,8 @@ interface WorldMapDisplayProps {
 }
 
 export function WorldMapDisplay({ mapDescription, isGenerating, structures, onDeleteStructure, currentGold }: WorldMapDisplayProps) {
+  const [structureToConfirmDelete, setStructureToConfirmDelete] = useState<{id: string, name: string} | null>(null);
+  
   if (isGenerating) {
     return (
       <Card className="flex-1 shadow-lg flex flex-col items-center justify-center min-h-[400px]">
@@ -35,14 +50,15 @@ export function WorldMapDisplay({ mapDescription, isGenerating, structures, onDe
     );
   }
 
-  const handleConfirmDelete = (structureId: string, structureName: string) => {
-    // Consider using an AlertDialog for confirmation
-    if (window.confirm(`Are you sure you want to demolish the ${structureName}? This action cannot be undone.`)) {
-      onDeleteStructure(structureId);
+  const handleConfirmDelete = () => {
+    if (structureToConfirmDelete) {
+      onDeleteStructure(structureToConfirmDelete.id);
+      setStructureToConfirmDelete(null);
     }
   };
 
   return (
+    <>
     <Card className="flex-1 shadow-lg flex flex-col">
       <CardHeader>
         <CardTitle>Realm Overview</CardTitle>
@@ -102,14 +118,16 @@ export function WorldMapDisplay({ mapDescription, isGenerating, structures, onDe
                       {Icon && <Icon className="h-5 w-5 text-primary" />}
                       <span>{buildingDetails?.name || structure.typeId}</span>
                     </div>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleConfirmDelete(structure.id, buildingDetails?.name || 'Unknown Structure')}
-                    >
-                      <ACTION_ICONS.Delete className="h-4 w-4 mr-1" />
-                      Demolish
-                    </Button>
+                     <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => setStructureToConfirmDelete({id: structure.id, name: buildingDetails?.name || 'Unknown Structure'})}
+                        >
+                          <ACTION_ICONS.Delete className="h-4 w-4 mr-1" />
+                          Demolish
+                        </Button>
+                      </AlertDialogTrigger>
                   </li>
                 );
               })}
@@ -123,7 +141,24 @@ export function WorldMapDisplay({ mapDescription, isGenerating, structures, onDe
          </CardFooter>
       )}
     </Card>
+    {structureToConfirmDelete && (
+        <AlertDialog open={!!structureToConfirmDelete} onOpenChange={(open) => !open && setStructureToConfirmDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Demolition</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Are you sure you want to demolish the {structureToConfirmDelete.name}? This action cannot be undone and will refund only a portion of its cost.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setStructureToConfirmDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">
+                    Demolish
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )}
+    </>
   );
 }
-
-```

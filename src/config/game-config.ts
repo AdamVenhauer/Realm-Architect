@@ -1,3 +1,4 @@
+
 import type { BuildingType, QuestDefinition, ResourceSet } from '@/types/game';
 import { Home, Carrot, Pickaxe, Trees, Mountain, Coins, Apple, PackageIcon, Sparkles, Hammer, Play, Globe, Axe, Trophy, ListChecks, Target, Users, ShieldAlert, Skull } from 'lucide-react';
 
@@ -186,5 +187,3 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
 // Moved here because GameState type is needed
 import type { GameState, PlayerQuest } from '@/types/game'; 
 import { initializePlayerQuests } from '@/lib/quest-utils'; // This function must exist in quest-utils
-
-```

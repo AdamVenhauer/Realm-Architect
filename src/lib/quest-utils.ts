@@ -2,6 +2,7 @@
 import type { GameState, PlayerQuest, QuestCriterion, ResourceSet } from '@/types/game';
 import { QUEST_DEFINITIONS } from '@/config/game-config';
 
+
 // This function is safe to be called from client or server as it has no side effects or server-only deps.
 export function initializePlayerQuests(): PlayerQuest[] {
   return Object.keys(QUEST_DEFINITIONS).map(questId => ({
@@ -9,6 +10,7 @@ export function initializePlayerQuests(): PlayerQuest[] {
     status: 'active',
   }));
 }
+
 
 export function isCriterionMet(criterion: QuestCriterion, gameState: GameState): boolean {
   switch (criterion.type) {
@@ -29,4 +31,3 @@ export function isCriterionMet(criterion: QuestCriterion, gameState: GameState):
       return false;
   }
 }
-```

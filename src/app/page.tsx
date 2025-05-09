@@ -61,40 +61,59 @@ export default function RealmArchitectPage() {
   }, []);
 
   const updateGameStateAndCheckQuests = useCallback(async (newStateOrUpdater: GameStateType | ((prevState: GameStateType) => GameStateType)) => {
-    // Resolve the new state first
-    const resolvedNewState = typeof newStateOrUpdater === 'function'
-        ? newStateOrUpdater(gameState) // If it's a function, call it with the current gameState
-        : newStateOrUpdater;        // Otherwise, use the new state directly
+    setGameState(prevState => {
+      const resolvedNewState = typeof newStateOrUpdater === 'function'
+        ? newStateOrUpdater(prevState)
+        : newStateOrUpdater;
 
-    // If game is already over in the *new* state, just set it and return
-    if (resolvedNewState.isGameOver) {
-        setGameState(resolvedNewState);
-        return;
-    }
-    
-    const { updatedGameState, completedQuestsInfo } = await checkAndCompleteQuestsAction(resolvedNewState);
-    setGameState(updatedGameState); // Set the state after quests are checked
-    
-    completedQuestsInfo.forEach(info => {
-        toast({
-            title: info.title,
-            description: info.message,
+      if (resolvedNewState.isGameOver && !prevState.isGameOver) {
+         toast({
+            title: "Realm Lost!",
+            description: resolvedNewState.currentEvent || "Your realm has crumbled.",
+            variant: "destructive",
         });
+        return resolvedNewState;
+      }
+      
+      // Perform quest checking asynchronously *after* this state update
+      // This avoids calling setGameState again within the same render cycle from checkAndCompleteQuestsAction
+      // if it were to call setGameState directly.
+      if (!resolvedNewState.isGameOver) {
+        checkAndCompleteQuestsAction(resolvedNewState).then(({ updatedGameState: stateAfterQuests, completedQuestsInfo }) => {
+          setGameState(stateAfterQuests); // Final state update after quest checks
+          completedQuestsInfo.forEach(info => {
+            toast({
+              title: info.title,
+              description: info.message,
+            });
+          });
+        }).catch(error => {
+           console.error("Error checking quests:", error);
+           toast({
+                title: "Error During Quest Check",
+                description: "Could not process quest updates.",
+                variant: "destructive",
+            });
+        });
+      }
+      return resolvedNewState; // Return the state before async quest check for immediate UI update
     });
-  }, [gameState, toast]); // gameState dependency is important here
+  }, [toast]); // Removed gameState from dependencies to avoid stale closures if checkAndCompleteQuestsAction was calling setGameState
+
 
   const handleAdvanceTurn = async () => {
     if (gameState.isGameOver) return;
     try {
       const nextState = await advanceTurnAction(gameState);
       // The event message is now part of nextState.currentEvent
-      if (nextState.currentEvent) {
+      if (nextState.currentEvent && !nextState.isGameOver) { // Only show turn event if not game over
         toast({
           title: `Turn ${nextState.currentTurn}`,
           description: nextState.currentEvent,
         });
       }
-      await updateGameStateAndCheckQuests(nextState); // This will also handle quest toasts
+      // updateGameStateAndCheckQuests will handle game over toast separately if it occurs
+      await updateGameStateAndCheckQuests(nextState); 
     } catch (error) {
       console.error("Error advancing turn:", error);
       toast({
@@ -109,19 +128,15 @@ export default function RealmArchitectPage() {
     if (gameState.isGameOver) return;
     try {
       const nextState = await deleteStructureAction(gameState, structureId);
-      await updateGameStateAndCheckQuests(nextState); // This now correctly uses the latest gameState
-      if (!nextState.isGameOver) { // Only show positive toast if not game over
+      // updateGameStateAndCheckQuests will handle game over toast if it occurs
+      await updateGameStateAndCheckQuests(nextState); 
+      if (!nextState.isGameOver) { 
         toast({
             title: "Structure Demolished",
             description: "Resources partially recovered.",
         });
-      } else {
-         toast({ // Show game over toast if demolition caused it
-            title: "Realm Lost!",
-            description: nextState.currentEvent || "Demolishing a key structure led to the realm's downfall.",
-            variant: "destructive",
-        });
       }
+      // Game over toast is handled by updateGameStateAndCheckQuests
     } catch (error) {
       console.error("Error deleting structure:", error);
       toast({
@@ -133,18 +148,32 @@ export default function RealmArchitectPage() {
   };
   
   const resetGame = () => {
-    setGameState(getInitialGameState());
-    // Use useEffect to show toast after state is updated
+    const initial = getInitialGameState();
+    setGameState(initial);
+     toast({ // Show toast after state is effectively reset
+        title: "New Realm Started",
+        description: "A fresh beginning awaits!",
+    });
   };
 
-  useEffect(() => {
-    if (isClient && gameState.currentTurn === 1 && !gameState.generatedWorldMap) { // Example condition for initial game toast
-         toast({
-            title: "New Realm Started",
-            description: "A fresh beginning awaits!",
-        });
+ useEffect(() => {
+    if (isClient && gameState.currentTurn === 1 && !gameState.generatedWorldMap && gameState.playerQuests.length > 0 && !gameState.isGameOver) {
+        // Check if this specific toast has already been shown for this game instance
+        // This is a simple way; more robust would involve a flag in gameState or session storage
+        const hasShownInitialToast = sessionStorage.getItem('initialRealmToastShown');
+        if (!hasShownInitialToast) {
+            toast({
+                title: "Welcome, Realm Architect!",
+                description: "Your journey begins now. Generate a world to start.",
+            });
+            sessionStorage.setItem('initialRealmToastShown', 'true');
+        }
     }
-  }, [isClient, gameState.currentTurn, gameState.generatedWorldMap, toast]);
+    // Clear session storage on game reset
+    if(gameState.currentTurn === 1 && gameState.resources.wood === getConfigInitialGameState().resources.wood) { // a simple check for reset state
+        sessionStorage.removeItem('initialRealmToastShown');
+    }
+  }, [isClient, gameState.currentTurn, gameState.generatedWorldMap, gameState.playerQuests, gameState.isGameOver, toast]);
 
 
   if (!isClient) {
@@ -185,6 +214,7 @@ export default function RealmArchitectPage() {
            <SidebarTrigger asChild>
             <Button variant="ghost" size="icon" className="md:hidden">
               <Menu />
+              <span className="sr-only">Toggle Sidebar</span>
             </Button>
           </SidebarTrigger>
         </header>
@@ -206,7 +236,7 @@ export default function RealmArchitectPage() {
                 updateGameStateAndCheckQuests={updateGameStateAndCheckQuests}
               />
               <Separator />
-               <QuestDisplay playerQuests={gameState.playerQuests} allQuestDefinitions={QUEST_DEFINITIONS} />
+              <QuestDisplay playerQuests={gameState.playerQuests} allQuestDefinitions={QUEST_DEFINITIONS} />
               <Separator />
               <GameActions 
                 gameState={gameState} 
