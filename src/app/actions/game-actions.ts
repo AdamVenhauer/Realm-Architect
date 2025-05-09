@@ -24,7 +24,7 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
   newState.currentTurn += 1;
   
   let newResources: ResourceSet = { ...newState.resources };
-  let newPopulation = newState.resources.population;
+  let currentTurnPopulation = newState.resources.population; // Use this to track population changes within this turn's logic
   
   const eventMessages: string[] = [];
 
@@ -32,14 +32,14 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
   const maxPopulationCapacity = calculateMaxPopulationCapacity(newState.structures);
 
   // 0.1. Immigration: New citizens arrive if there's space and enough food
-  if (newPopulation < maxPopulationCapacity) {
+  if (currentTurnPopulation < maxPopulationCapacity) {
     const immigrants = 1; 
-    const foodNeededForExistingAndNew = Math.ceil((newPopulation + immigrants) * 0.5); 
+    const foodNeededForExistingAndNew = Math.ceil((currentTurnPopulation + immigrants) * 0.5); 
 
     if (newResources.food >= foodNeededForExistingAndNew) {
-      newPopulation += immigrants;
+      currentTurnPopulation += immigrants;
       eventMessages.push(`${immigrants} new citizen(s) arrived, attracted by available housing and food!`);
-    } else if (newResources.food < newPopulation * 0.5) { 
+    } else if (newResources.food < currentTurnPopulation * 0.5) { 
         eventMessages.push(`Potential settlers saw your realm but were deterred by severe food shortages.`);
     } else {
         eventMessages.push(`Potential new settlers arrived, but there wasn't quite enough food to support them immediately.`);
@@ -102,40 +102,42 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
   }
   
   // 2. Food Consumption by Population (Reduced consumption rate)
-  const foodConsumedThisTurn = Math.ceil(newPopulation * 0.5); 
+  const foodConsumedThisTurn = Math.ceil(currentTurnPopulation * 0.5); 
   newResources.food -= foodConsumedThisTurn;
 
   // 3. Starvation & Population Change
   if (newResources.food < 0) {
     const foodDeficit = Math.abs(newResources.food);
-    const peopleLost = newPopulation > 0 ? Math.max(1, Math.ceil(foodDeficit / 1)) : 0; 
-    const actualPeopleLost = Math.min(newPopulation, peopleLost); 
+    const peopleLost = currentTurnPopulation > 0 ? Math.max(1, Math.ceil(foodDeficit / 1)) : 0; 
+    const actualPeopleLost = Math.min(currentTurnPopulation, peopleLost); 
     
     if (actualPeopleLost > 0) {
-        newPopulation = Math.max(0, newPopulation - actualPeopleLost);
+        currentTurnPopulation = Math.max(0, currentTurnPopulation - actualPeopleLost);
         eventMessages.push(`${actualPeopleLost} citizen(s) perished from starvation!`);
     }
     newResources.food = 0; 
-  } else if (newResources.food === 0 && newPopulation > 0 && foodConsumedThisTurn > 0) { 
-    const peopleLost = Math.min(newPopulation, 1); 
+  } else if (newResources.food === 0 && currentTurnPopulation > 0 && foodConsumedThisTurn > 0) { 
+    const peopleLost = Math.min(currentTurnPopulation, 1); 
     if (peopleLost > 0) {
-        newPopulation = Math.max(0, newPopulation - peopleLost);
+        currentTurnPopulation = Math.max(0, currentTurnPopulation - peopleLost);
         eventMessages.push(`${peopleLost} citizen starved due to critical food shortage!`);
     }
   }
 
   // 3.5 Overpopulation check (if current population exceeds max capacity)
-  if (newPopulation > maxPopulationCapacity) {
-    const SPREADSHEET_ONLINE_EDITOR_MAX_ROWS = newPopulation - maxPopulationCapacity;
+  if (currentTurnPopulation > maxPopulationCapacity) {
+    const SPREADSHEET_ONLINE_EDITOR_MAX_ROWS = currentTurnPopulation - maxPopulationCapacity;
     if (SPREADSHEET_ONLINE_EDITOR_MAX_ROWS > 0) {
-      newPopulation = maxPopulationCapacity;
+      currentTurnPopulation = maxPopulationCapacity;
       eventMessages.push(`${SPREADSHEET_ONLINE_EDITOR_MAX_ROWS} citizen(s) became homeless due to overcrowding and left the realm.`);
     }
   }
 
-  newState.resources = { ...newResources, population: newPopulation };
+  // Apply population changes from phase 0-3.5 to newState for interim checks and subsequent event logic
+  newState.resources = { ...newResources, population: currentTurnPopulation };
 
-  // 4. Game Over Check (due to population from starvation or overcrowding)
+
+  // 4. Game Over Check (due to population from starvation or overcrowding from initial phases)
   if (newState.resources.population <= 0 && !newState.isGameOver) { 
     newState.isGameOver = true;
     const gameOverReason = eventMessages.some(msg => msg.includes("starvation") || msg.includes("starved")) 
@@ -146,7 +148,7 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
     
     if (!eventMessages.some(msg => msg.includes("perished") || msg.includes("starved") || msg.includes("homeless") )) {
         eventMessages.push("The last of your people have vanished. Your realm has fallen into ruin.");
-    } else {
+    } else if (!eventMessages.some(msg => msg.toLowerCase().includes("fallen") || msg.toLowerCase().includes("lost"))) {
          eventMessages.push(gameOverReason);
     }
     newState.currentEvent = eventMessages.join(' | ');
@@ -158,15 +160,34 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
     eventMessages.push("The realm's coffers are empty! Workers are unpaid, and overall production is affected.");
   }
 
-  // 6. Random Event (only if not game over)
+  // EVENT PHASE
+  // Specific 1/50 Probability Bandit Ambush Event
+  if (!newState.isGameOver && Math.random() < 0.02) { // 1/50 chance = 0.02
+    let populationLossByAmbush = Math.floor(Math.random() * 3) + 1; // Kills 1 to 3 people
+    populationLossByAmbush = Math.min(populationLossByAmbush, newState.resources.population); // Cannot lose more than current population
+
+    if (populationLossByAmbush > 0) {
+      newState.resources.population -= populationLossByAmbush;
+      // currentTurnPopulation = newState.resources.population; // Update tracker if used later, but direct modification is fine here.
+      const ambushMessage = `A sudden bandit ambush! They killed ${populationLossByAmbush} citizen(s).`;
+      eventMessages.push(ambushMessage);
+      
+      if (newState.resources.population <= 0 && !newState.isGameOver) {
+        newState.isGameOver = true;
+        eventMessages.push("The bandit ambush wiped out your remaining people. The realm is lost.");
+      }
+    }
+  }
+
+  // 6. General Random Event (from TURN_EVENTS array)
   if (!newState.isGameOver && TURN_EVENTS.length > 0) {
     const eventDefinition = TURN_EVENTS[Math.floor(Math.random() * TURN_EVENTS.length)];
-    if (!eventMessages.includes(eventDefinition.message)) {
+    if (!eventMessages.includes(eventDefinition.message)) { // Avoid duplicate generic messages
         eventMessages.push(eventDefinition.message);
     }
 
-
     if (eventDefinition.effect) {
+      // Pass the most current state to the effect function
       const effectResult = eventDefinition.effect(JSON.parse(JSON.stringify({resources: newState.resources, structures: newState.structures, currentTurn: newState.currentTurn }))); 
       
       if (effectResult.resourceDelta) {
@@ -174,15 +195,15 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
           const delta = effectResult.resourceDelta[rKey];
           if (delta !== undefined) {
             if (rKey === 'population') {
-              const potentialNewPopulation = (newState.resources.population || 0) + delta;
+              const potentialNewPopulation = newState.resources.population + delta;
               if (delta > 0) { 
                 const currentMaxCap = calculateMaxPopulationCapacity(newState.structures); // Recalculate with current state for event context
                 newState.resources.population = Math.min(potentialNewPopulation, currentMaxCap);
-                if (potentialNewPopulation > currentMaxCap && currentMaxCap > 0) {
+                if (potentialNewPopulation > currentMaxCap && currentMaxCap > newState.resources.population - delta) { // Checks if cap limited actual gain
                    eventMessages.push(`An event tried to increase population, but housing was limited. Only ${currentMaxCap - (newState.resources.population - delta)} could settle.`);
-                } else if (potentialNewPopulation > currentMaxCap && currentMaxCap === BASE_POPULATION_CAPACITY && newState.structures.filter(s => s.typeId === 'hut').length === 0 ) { // Only base capacity exists
+                } else if (potentialNewPopulation > currentMaxCap && currentMaxCap === BASE_POPULATION_CAPACITY && newState.structures.filter(s => s.typeId === 'hut').length === 0 ) { 
                     eventMessages.push(`An event tried to increase population, but there is no housing beyond the initial settlement.`);
-                } else if (potentialNewPopulation > currentMaxCap && currentMaxCap === 0) { // Should not happen with base capacity
+                } else if (potentialNewPopulation > currentMaxCap && currentMaxCap === 0) { 
                     eventMessages.push(`An event tried to increase population, but there is absolutely no housing.`);
                 }
               } else { 
@@ -207,7 +228,7 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
           const calamityMsg = "A sudden calamity has wiped out your remaining population! The realm is lost.";
           if (!eventMessages.some(msg => msg.includes("calamity"))) {
               eventMessages.push(calamityMsg);
-          } else {
+          } else if (!eventMessages.some(m => m.toLowerCase().includes("lost.") || m.toLowerCase().includes("fallen."))) {
               eventMessages.push("The realm has fallen due to events beyond your control.");
           }
       }
@@ -224,12 +245,15 @@ export async function advanceTurn(currentGameState: GameState): Promise<GameStat
     eventMessages.push(`A loyal subject has gifted you ${randomAmount} ${randomResource}! Your benevolence is recognized.`);
   }
   
-  if (newState.isGameOver) {
-    newState.currentEvent = eventMessages.filter(Boolean).join(' | ');
-    return newState;
+  // Final game over check if any event during the EVENT PHASE led to it.
+  if (newState.resources.population <= 0 && !newState.isGameOver) {
+    newState.isGameOver = true;
+    if (!eventMessages.some(msg => msg.toLowerCase().includes("lost.") || msg.toLowerCase().includes("fallen.") || msg.toLowerCase().includes("perished."))) {
+        eventMessages.push("Events have conspired against you, and your last citizen has vanished. The realm is lost.");
+    }
   }
 
   newState.currentEvent = eventMessages.filter(Boolean).join(' | ');
-
   return newState;
 }
+
