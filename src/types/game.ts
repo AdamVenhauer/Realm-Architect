@@ -5,6 +5,7 @@ export interface ResourceSet {
   stone: number;
   food: number;
   gold: number;
+  population: number;
 }
 
 export interface BuildingType {
@@ -12,9 +13,10 @@ export interface BuildingType {
   name: string;
   icon: LucideIcon;
   description: string;
-  cost: Partial<ResourceSet>;
-  upkeep: Partial<ResourceSet>;
-  production: Partial<ResourceSet>; // What it produces per turn
+  cost: Partial<Omit<ResourceSet, 'population'>>; // Cost should not include population
+  upkeep: Partial<Omit<ResourceSet, 'population'>>;
+  production: Partial<Omit<ResourceSet, 'population'>>; // What it produces per turn
+  providesPopulation?: number; // How much population this building adds/supports
 }
 
 export interface PlacedStructure {
@@ -25,11 +27,11 @@ export interface PlacedStructure {
 
 // --- Quest System Types ---
 export interface QuestReward {
-  resources?: Partial<ResourceSet>;
+  resources?: Partial<Omit<ResourceSet, 'population'>>;
   message?: string; // For toast notification
 }
 
-export type QuestCriteriaType = 'build' | 'resource_reach' | 'turn_reach';
+export type QuestCriteriaType = 'build' | 'resource_reach' | 'turn_reach' | 'population_reach';
 
 export interface BaseQuestCriterion {
   description: string; // e.g., "Build 2 Huts" or "Reach 100 Food"
@@ -43,7 +45,12 @@ export interface BuildQuestCriterion extends BaseQuestCriterion {
 
 export interface ResourceReachQuestCriterion extends BaseQuestCriterion {
   type: 'resource_reach';
-  resourceType: keyof ResourceSet;
+  resourceType: keyof Omit<ResourceSet, 'population'>; // Population handled by PopulationReachQuestCriterion
+  targetAmount: number;
+}
+
+export interface PopulationReachQuestCriterion extends BaseQuestCriterion {
+  type: 'population_reach';
   targetAmount: number;
 }
 
@@ -52,7 +59,7 @@ export interface TurnReachQuestCriterion extends BaseQuestCriterion {
   targetTurn: number;
 }
 
-export type QuestCriterion = BuildQuestCriterion | ResourceReachQuestCriterion | TurnReachQuestCriterion;
+export type QuestCriterion = BuildQuestCriterion | ResourceReachQuestCriterion | TurnReachQuestCriterion | PopulationReachQuestCriterion;
 
 export interface QuestDefinition {
   id: string;
@@ -79,8 +86,11 @@ export interface GameState {
   resources: ResourceSet;
   structures: PlacedStructure[];
   currentTurn: number;
-  currentEvent: string | null;
+  currentEvent: string | null; // Can be a single string, or join multiple event messages
   selectedBuildingForConstruction: string | null; // typeId of building
   playerQuests: PlayerQuest[];
+  isGameOver: boolean;
+  // population is now part of resources: resources.population
 }
 
+```

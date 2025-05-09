@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ResourceSet } from '@/types/game';
@@ -19,13 +20,13 @@ export function ResourceDisplay({ resources }: ResourceDisplayProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-sm">
           {Object.entries(resources).map(([key, value]) => {
             const details = RESOURCE_DETAILS[key as keyof ResourceSet];
             if (!details) return null;
             const Icon = details.icon;
             return (
-              <div key={key} className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
+              <div key={key} className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md shadow">
                 <Icon className={cn("h-6 w-6", details.color)} />
                 <div>
                   <span className="font-semibold">{details.name}: </span>
@@ -39,3 +40,5 @@ export function ResourceDisplay({ resources }: ResourceDisplayProps) {
     </Card>
   );
 }
+
+```

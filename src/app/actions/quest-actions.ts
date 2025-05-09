@@ -1,8 +1,9 @@
+
 'use server';
 
 import type { GameState, PlayerQuest, QuestCriterion, ResourceSet } from '@/types/game';
 import { QUEST_DEFINITIONS } from '@/config/game-config';
-import { isCriterionMet } from '@/lib/quest-utils'; // Import the helper
+import { isCriterionMet } from '@/lib/quest-utils'; 
 
 export interface CompletedQuestInfo {
   title: string;
@@ -13,21 +14,24 @@ export interface CompletedQuestInfo {
 export async function checkAndCompleteQuests(
   gameState: GameState
 ): Promise<{ updatedGameState: GameState; completedQuestsInfo: CompletedQuestInfo[] }> {
-  let newGameState = { ...gameState };
+  let newGameState = JSON.parse(JSON.stringify(gameState)); // Deep copy
   const completedQuestsInfo: CompletedQuestInfo[] = [];
+
+  // Prevent running if game is over
+  if (newGameState.isGameOver) {
+    return { updatedGameState: newGameState, completedQuestsInfo };
+  }
 
   let questsCompletedInThisIteration: boolean;
   do {
     questsCompletedInThisIteration = false;
-    newGameState.playerQuests = newGameState.playerQuests.map(playerQuest => {
-      if (playerQuest.status === 'completed') {
-        return playerQuest;
-      }
-
+    const currentlyActiveQuests = newGameState.playerQuests.filter(pq => pq.status === 'active');
+    
+    for (const playerQuest of currentlyActiveQuests) {
       const questDef = QUEST_DEFINITIONS[playerQuest.questId];
       if (!questDef) {
         console.warn(`Quest definition not found for ID: ${playerQuest.questId}`);
-        return playerQuest;
+        continue;
       }
 
       let allCriteriaMet = true;
@@ -40,12 +44,22 @@ export async function checkAndCompleteQuests(
 
       if (allCriteriaMet) {
         questsCompletedInThisIteration = true;
+        
+        // Find the quest in the main newGameState.playerQuests array to update its status
+        const questToUpdate = newGameState.playerQuests.find(pq => pq.questId === playerQuest.questId);
+        if (questToUpdate) {
+          questToUpdate.status = 'completed';
+        }
+
         // Apply reward
         const updatedResourcesAfterReward = { ...newGameState.resources };
         if (questDef.reward.resources) {
           for (const [resource, amount] of Object.entries(questDef.reward.resources)) {
-            updatedResourcesAfterReward[resource as keyof ResourceSet] = 
-              (updatedResourcesAfterReward[resource as keyof ResourceSet] || 0) + amount;
+            // Ensure we are not trying to add 'population' directly via quest rewards this way
+            if (resource !== 'population') {
+                 updatedResourcesAfterReward[resource as keyof Omit<ResourceSet, 'population'>] = 
+                (updatedResourcesAfterReward[resource as keyof Omit<ResourceSet, 'population'>] || 0) + amount;
+            }
           }
         }
         newGameState.resources = updatedResourcesAfterReward;
@@ -55,13 +69,9 @@ export async function checkAndCompleteQuests(
           message: questDef.reward.message || (questDef.isAchievement ? 'A milestone reached!' : 'You earned a reward!'),
           isAchievement: questDef.isAchievement,
         });
-        
-        return { ...playerQuest, status: 'completed' };
       }
-
-      return playerQuest;
-    });
-  } while (questsCompletedInThisIteration); // Re-check if a quest completion could trigger another
+    }
+  } while (questsCompletedInThisIteration); 
 
   return { updatedGameState: newGameState, completedQuestsInfo };
 }

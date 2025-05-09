@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -9,46 +10,45 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-// No longer needed here: import { checkAndCompleteQuests as checkAndCompleteQuestsAction } from '@/app/actions/quest-actions';
 
 interface ConstructionMenuProps {
   gameState: GameState;
-  setGameState: Dispatch<SetStateAction<GameState>>; // For direct, simple state updates
-  updateGameStateAndCheckQuests: (newStateOrUpdater: GameState | ((prevState: GameState) => GameState)) => Promise<void>; // For updates that trigger game logic and quests
+  updateGameStateAndCheckQuests: (newStateOrUpdater: GameState | ((prevState: GameState) => GameState)) => Promise<void>; 
 }
 
-export function ConstructionMenu({ gameState, setGameState, updateGameStateAndCheckQuests }: ConstructionMenuProps) {
+export function ConstructionMenu({ gameState, updateGameStateAndCheckQuests }: ConstructionMenuProps) {
   const { toast } = useToast();
+  // Local state for selection, does not need to trigger quests or complex logic
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
+
 
   const handleSelectBuilding = (buildingId: string) => {
-    // Use the direct setGameState for this simple UI update
-    setGameState(prev => ({ ...prev, selectedBuildingForConstruction: buildingId }));
+    setSelectedBuildingId(buildingId);
     toast({
       title: `${BUILDING_TYPES[buildingId].name} Selected`,
-      description: "Click on the map area to place the building (simulated).",
+      description: "Click 'Place Building' to confirm construction (simulated on map).",
     });
   };
 
   const handlePlaceBuilding = async () => {
-    if (!gameState.selectedBuildingForConstruction) return;
+    if (!selectedBuildingId) return;
 
-    const buildingType = BUILDING_TYPES[gameState.selectedBuildingForConstruction];
+    const buildingType = BUILDING_TYPES[selectedBuildingId];
     if (!buildingType) return;
 
     let canAfford = true;
     for (const [resource, amount] of Object.entries(buildingType.cost)) {
-      if (gameState.resources[resource as keyof ResourceSet] < amount) {
+      if (gameState.resources[resource as keyof Omit<ResourceSet, 'population'>] < amount) {
         canAfford = false;
         break;
       }
     }
 
     if (canAfford) {
-      // This function will be an updater for updateGameStateAndCheckQuests
       const updaterFunction = (prevGameState: GameState): GameState => {
         const newResources = { ...prevGameState.resources };
         for (const [resource, amount] of Object.entries(buildingType.cost)) {
-          newResources[resource as keyof ResourceSet] = (newResources[resource as keyof ResourceSet] || 0) - amount;
+          newResources[resource as keyof Omit<ResourceSet, 'population'>] = (newResources[resource as keyof Omit<ResourceSet, 'population'>] || 0) - amount;
         }
 
         const newStructure = {
@@ -56,23 +56,26 @@ export function ConstructionMenu({ gameState, setGameState, updateGameStateAndCh
           typeId: buildingType.id,
         };
         
+        let newPopulation = prevGameState.resources.population;
+        if (buildingType.providesPopulation) {
+          newPopulation += buildingType.providesPopulation;
+        }
+        
         return {
           ...prevGameState,
-          resources: newResources,
+          resources: { ...newResources, population: newPopulation },
           structures: [...prevGameState.structures, newStructure],
-          selectedBuildingForConstruction: null, // Reset selection
+          // selectedBuildingForConstruction: null, // UI state, handled by local state
         };
       };
       
-      // Use the prop from parent to handle state update and quest checks
-      // This will internally call the server action with the new state derived from updaterFunction
       await updateGameStateAndCheckQuests(updaterFunction); 
+      setSelectedBuildingId(null); // Reset local UI selection
         
       toast({
         title: `${buildingType.name} Placed!`,
-        description: `Resources deducted. Your realm grows.`,
+        description: `Resources deducted. Your realm grows. ${buildingType.providesPopulation ? `Population increased by ${buildingType.providesPopulation}.` : ''}`,
       });
-      // Toasting for completedQuestsInfo is handled by the parent's updateGameStateAndCheckQuests
 
     } else {
       toast({
@@ -97,7 +100,7 @@ export function ConstructionMenu({ gameState, setGameState, updateGameStateAndCh
           <div className="space-y-4">
             {Object.values(BUILDING_TYPES).map((building) => {
               const Icon = building.icon;
-              const isSelected = gameState.selectedBuildingForConstruction === building.id;
+              const isSelected = selectedBuildingId === building.id;
               return (
                 <div key={building.id} className={cn("p-3 rounded-lg border", isSelected ? "border-primary ring-2 ring-primary shadow-md" : "bg-muted/30 hover:bg-muted/60")}>
                   <div className="flex items-center justify-between mb-2">
@@ -109,24 +112,27 @@ export function ConstructionMenu({ gameState, setGameState, updateGameStateAndCh
                         size="sm"
                         variant={isSelected ? "default" : "outline"}
                         onClick={() => handleSelectBuilding(building.id)}
-                        disabled={!!gameState.selectedBuildingForConstruction && !isSelected}
+                        disabled={!!selectedBuildingId && !isSelected}
                       >
                         {isSelected ? "Selected" : "Select"}
                       </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">{building.description}</p>
+                   {building.providesPopulation && (
+                    <p className="text-xs text-muted-foreground mb-2">Provides +{building.providesPopulation} Population</p>
+                  )}
                   <div className="text-xs space-y-1">
                     <div>
                       <span className="font-medium">Cost:</span>
                       {Object.entries(building.cost).map(([res, val]) => (
-                        <Badge variant="secondary" key={res} className="ml-1">{val} {RESOURCE_DETAILS[res as keyof ResourceSet]?.name.slice(0,1)}</Badge>
+                        <Badge variant="secondary" key={res} className="ml-1">{val} {RESOURCE_DETAILS[res as keyof Omit<ResourceSet, 'population'>]?.name.slice(0,1)}</Badge>
                       ))}
                     </div>
                     {Object.keys(building.upkeep).length > 0 && (
                       <div>
                         <span className="font-medium">Upkeep:</span>
                         {Object.entries(building.upkeep).map(([res, val]) => (
-                          <Badge variant="outline" key={res} className="ml-1">{val} {RESOURCE_DETAILS[res as keyof ResourceSet]?.name.slice(0,1)}/turn</Badge>
+                          <Badge variant="outline" key={res} className="ml-1">{val} {RESOURCE_DETAILS[res as keyof Omit<ResourceSet, 'population'>]?.name.slice(0,1)}/turn</Badge>
                         ))}
                       </div>
                     )}
@@ -134,7 +140,7 @@ export function ConstructionMenu({ gameState, setGameState, updateGameStateAndCh
                       <div>
                         <span className="font-medium">Produces:</span>
                         {Object.entries(building.production).map(([res, val]) => (
-                          <Badge variant="default" key={res} className="ml-1 bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300 border-green-500/50">+{val} {RESOURCE_DETAILS[res as keyof ResourceSet]?.name.slice(0,1)}/turn</Badge>
+                          <Badge variant="default" key={res} className="ml-1 bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300 border-green-500/50">+{val} {RESOURCE_DETAILS[res as keyof Omit<ResourceSet, 'population'>]?.name.slice(0,1)}/turn</Badge>
                         ))}
                       </div>
                     )}
@@ -144,13 +150,15 @@ export function ConstructionMenu({ gameState, setGameState, updateGameStateAndCh
             })}
           </div>
         </ScrollArea>
-        {gameState.selectedBuildingForConstruction && (
+        {selectedBuildingId && (
            <Button onClick={handlePlaceBuilding} className="w-full mt-4">
             <ACTION_ICONS.Build className="mr-2 h-5 w-5" />
-            Place {BUILDING_TYPES[gameState.selectedBuildingForConstruction].name}
+            Place {BUILDING_TYPES[selectedBuildingId].name}
           </Button>
         )}
       </CardContent>
     </Card>
   );
 }
+
+```
