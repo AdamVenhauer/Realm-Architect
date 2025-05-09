@@ -26,7 +26,8 @@ import {
   QUEST_DEFINITIONS, 
   BUILDING_TYPES, 
   ACTION_ICONS,
-  BASE_POPULATION_CAPACITY // Import BASE_POPULATION_CAPACITY
+  BASE_POPULATION_CAPACITY,
+  TURN_EVENTS // Import TURN_EVENTS to access event icons
 } from '@/config/game-config';
 import { initializePlayerQuests } from '@/lib/quest-utils';
 import { checkAndCompleteQuests as checkAndCompleteQuestsAction, type CompletedQuestInfo } from '@/app/actions/quest-actions';
@@ -148,9 +149,24 @@ export default function RealmArchitectPage() {
     if (gameState.isGameOver) return;
     try {
       const nextState = await advanceTurnAction(gameState);
-      if (isClient && nextState.currentEvent && !nextState.isGameOver) { 
+      if (isClient && nextState.currentEvent && !nextState.isGameOver) {
+        // Try to find the event definition to get its icon
+        const eventMessages = nextState.currentEvent.split(' | ');
+        const primaryMessage = eventMessages[0]; // Assume first message is the main random event
+        const eventDef = TURN_EVENTS.find(e => e.message === primaryMessage);
+        const EventIcon = eventDef?.icon;
+        
+        const toastTitle = EventIcon 
+            ? (
+                <div className="flex items-center gap-2">
+                    <EventIcon className="h-5 w-5" />
+                    <span>Turn {nextState.currentTurn}</span>
+                </div>
+              ) 
+            : `Turn ${nextState.currentTurn}`;
+
         toast({
-          title: `Turn ${nextState.currentTurn}`,
+          title: toastTitle,
           description: nextState.currentEvent,
         });
       }
@@ -260,7 +276,7 @@ export default function RealmArchitectPage() {
     <SidebarProvider defaultOpen>
       <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-background to-muted/50 dark:from-background dark:to-muted/30">
         <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
-          <div className="container flex h-14 items-center justify-between p-4 mx-auto">
+          <div className="container mx-auto flex h-14 items-center justify-between px-4">
             <div className="flex items-center gap-2">
               <AppIcon className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_TITLE}</h1>
@@ -282,7 +298,7 @@ export default function RealmArchitectPage() {
           </div>
         </header>
         
-        <div className="container flex flex-1 w-full mx-auto">
+        <div className="container mx-auto flex flex-1 w-full">
           <Sidebar
             variant="sidebar"
             collapsible="icon"
@@ -381,3 +397,4 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
+

@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 
 export interface ResourceSet {
@@ -88,6 +89,19 @@ export interface PlayerQuest {
 }
 // --- End Quest System Types ---
 
+// --- Game Event Types ---
+export interface GameEventEffectResult {
+    resourceDelta?: Partial<ResourceSet>; 
+    additionalMessage?: string; 
+}
+
+export interface GameEvent {
+  message: string;
+  icon?: LucideIcon; // Optional icon for the event
+  effect?: (currentState: Readonly<Pick<GameState, 'resources' | 'structures' | 'currentTurn'>>) => GameEventEffectResult;
+}
+// --- End Game Event Types ---
+
 
 export interface GameState {
   resources: ResourceSet;
@@ -99,3 +113,4 @@ export interface GameState {
   isGameOver: boolean;
   // population is now part of resources: resources.population
 }
+
