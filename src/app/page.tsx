@@ -37,6 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 export default function RealmArchitectPage() {
@@ -280,8 +281,10 @@ export default function RealmArchitectPage() {
                       <h4 className="font-semibold mb-2">Constructed Buildings:</h4>
                       <ul className="list-disc list-inside pl-4 text-sm">
                         {gameState.structures.map(s => {
-                           const buildingType = QUEST_DEFINITIONS[s.typeId]?.title || s.typeId; // Fallback to typeId if name not in quest def (should be in BUILDING_TYPES)
-                           return <li key={s.id}>{buildingType}</li>;
+                           // Correctly get building type name from BUILDING_TYPES
+                           const buildingInfo = Object.values(QUEST_DEFINITIONS).find(qd => qd.criteria.some(c => c.type === 'build' && c.buildingId === s.typeId));
+                           const buildingName = buildingInfo?.title || s.typeId; // Fallback to typeId if name not in quest def (should be in BUILDING_TYPES)
+                           return <li key={s.id}>{buildingName}</li>;
                         })}
                       </ul>
                     </div>
@@ -297,3 +300,4 @@ export default function RealmArchitectPage() {
     </SidebarProvider>
   );
 }
+
